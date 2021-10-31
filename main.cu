@@ -12,9 +12,9 @@ int main(int argc, char** argv) {
     cudaMallocHost(reinterpret_cast<void **>(&B), sizeof(Matrix::Matrix2d));
     cudaMallocHost(reinterpret_cast<void **>(&C), sizeof(Matrix::Matrix2d));
 
-    Matrix::callAllocElementD(A, 1000, 1000);
-    Matrix::callAllocElementD(B, 1000, 1000);
-    Matrix::callAllocElementD(C, 1000, 1000);
+    Matrix::callAllocElementD(A, 8192, 8192);
+    Matrix::callAllocElementD(B, 8192, 8192);
+    Matrix::callAllocElementD(C, 8192, 8192);
 
     Matrix::callAllocRandom(A);
     _sleep(1000);

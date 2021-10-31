@@ -93,7 +93,7 @@ __global__ void crossTiling(Matrix::Matrix2d* mat1, Matrix::Matrix2d* mat2, Matr
 
 __global__ void crossCompOpt(Matrix::Matrix2d* mat1, Matrix::Matrix2d* mat2, Matrix::Matrix2d* result){
 
-    __shared__ float mat1_tile[TILE_SIZE][TILE_SIZE];
+    __shared__ float mat1Tile[TILE_SIZE][TILE_SIZE];
     float mat2Value = 0.0f;
     float resultBuffer[TILE_SIZE] = {0};
 
@@ -102,16 +102,18 @@ __global__ void crossCompOpt(Matrix::Matrix2d* mat1, Matrix::Matrix2d* mat2, Mat
     for (int tileId = 0; tileId < (mat1->colcount + TILE_SIZE-1)/TILE_SIZE; tileId++ ){
         //allocate elements
         for (int i = 0; i < TILE_SIZE / VECTOR_SIZE; i++) {
-            mat1_tile[threadIdx.x][i*VECTOR_SIZE + threadIdx.y]= mat1->
+            //transpose the matrix segment
+            mat1Tile[threadIdx.x][i * VECTOR_SIZE + threadIdx.y]= mat1->
                     get(blockIdx.y * TILE_SIZE + i*VECTOR_SIZE + threadIdx.y,tileId * TILE_SIZE + threadIdx.x);
         }
         __syncthreads();
 
+        #pragma unroll
         for (int row = 0; row < TILE_SIZE; row++){
             //pick a value of mat2 and put it into the registers
             mat2Value = mat2->get(tileId * TILE_SIZE + row,resultCol);
             for (int bufId = 0; bufId < TILE_SIZE; bufId++){
-                resultBuffer[bufId] += mat1_tile[row][bufId] * mat2Value;
+                resultBuffer[bufId] += mat1Tile[row][bufId] * mat2Value;
             }
         }
         __syncthreads();
@@ -122,8 +124,52 @@ __global__ void crossCompOpt(Matrix::Matrix2d* mat1, Matrix::Matrix2d* mat2, Mat
     }
 }
 
-__global__ void prefetchingCrossP(Matrix::Matrix2d* mat1, Matrix::Matrix2d* mat2, Matrix::Matrix2d* result){
+//this is basically the same as compOpt but with a tile of mat1 prefetched
+__global__ void crossPrefetching(Matrix::Matrix2d* mat1, Matrix::Matrix2d* mat2, Matrix::Matrix2d* result){
 
+    __shared__ float mat1Tile[TILE_SIZE*TILE_SIZE];
+    __shared__ float mat1TileNext[TILE_SIZE*TILE_SIZE];
+    float mat2Value = 0.0f;
+    float resultBuffer[TILE_SIZE] = {0};
+
+    int resultCol = VECTOR_SIZE*TILE_SIZE*blockIdx.x + threadIdx.y * TILE_SIZE + threadIdx.x;
+    for (int i = 0; i < TILE_SIZE / VECTOR_SIZE; i++) {
+        //transpose the matrix segment
+        mat1Tile[threadIdx.x*TILE_SIZE + i * VECTOR_SIZE + threadIdx.y]= mat1->
+                get(blockIdx.y * TILE_SIZE + i*VECTOR_SIZE + threadIdx.y, threadIdx.x);
+    }
+    __syncthreads();
+
+    float *cur = mat1Tile;
+    float *next = mat1TileNext;
+
+    for (int tileId = 1; tileId < (mat1->colcount + TILE_SIZE-1)/TILE_SIZE; tileId++ ){
+        for (int i = 0; i < TILE_SIZE / VECTOR_SIZE; i++) {
+            //transpose the matrix segment
+            next[threadIdx.x * TILE_SIZE + i * VECTOR_SIZE + threadIdx.y]= mat1->
+                    get(blockIdx.y * TILE_SIZE + i*VECTOR_SIZE + threadIdx.y, tileId*TILE_SIZE + threadIdx.x);
+        }
+        __syncthreads();
+
+        #pragma unroll
+        for (int row = 0; row < TILE_SIZE; row++){
+            //pick a value of mat2 and put it into the registers
+            mat2Value = mat2->get(tileId * TILE_SIZE + row,resultCol);
+            for (int bufId = 0; bufId < TILE_SIZE; bufId++){
+                resultBuffer[bufId] += cur[row* TILE_SIZE + bufId] * mat2Value;
+            }
+        }
+        __syncthreads();
+
+        //swap the pointers
+        auto tmp = cur;
+        cur = next;
+        next = tmp;
+    }
+    int resultRow0 = blockIdx.y * TILE_SIZE;
+    for (int bufId = 0; bufId <TILE_SIZE; bufId++){
+        result->set(resultRow0 + bufId, resultCol, resultBuffer[bufId]);
+    }
 }
 
 //memory Control:
@@ -178,7 +224,7 @@ Matrix::Matrix2d *Matrix::callCrossCompOpt(Matrix::Matrix2d *mat1, Matrix::Matri
     dim3 blockSize = dim3(TILE_SIZE, VECTOR_SIZE);
     dim3 grid = dim3((mat2->colcount + (TILE_SIZE * VECTOR_SIZE)-1) /
             (TILE_SIZE * VECTOR_SIZE), (mat1->rowcount + TILE_SIZE -1) / TILE_SIZE);
-    (void) crossCompOpt<<<grid, blockSize>>>(mat1, mat2, result);
+    (void) crossPrefetching<<<grid, blockSize>>>(mat1, mat2, result);
     (void) cudaDeviceSynchronize();
     return result;
 }
