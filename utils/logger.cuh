@@ -8,8 +8,6 @@
 #include <cstdio>
 #include <process.h>
 #include <iostream>
-#include <vector>
-#include <map>
 #include <Windows.h>
 #include <ctime>
 

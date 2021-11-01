@@ -23,6 +23,7 @@ public:
         int colcount;
         float* elements;
 
+        //operator definitions
         Matrix2d* operator+(Matrix2d* mat2);
         Matrix2d* operator+(float con);
         Matrix2d* operator-(Matrix2d* mat2);
@@ -51,7 +52,8 @@ public:
     static Matrix2d* callCrossP(Matrix2d* mat1, Matrix2d* mat2, Matrix2d* result);
     static Matrix2d* callCrossPrefetching(Matrix2d *mat1, Matrix2d *mat2, Matrix2d *result);
     static Matrix2d* callCrossCompOpt(Matrix2d* mat1, Matrix2d* mat2, Matrix2d* result);
-    static Matrix2d* callCrossPOlD(Matrix2d* mat1, Matrix2d* mat2, Matrix2d* result);
+    static Matrix2d* callCrossPOLD(Matrix2d* mat1, Matrix2d* mat2, Matrix2d* result);
+    static Matrix2d* callTranspose(Matrix2d* mat1, Matrix2d* result);
 
     //operator methods and normal operations
     static Matrix2d* callConstantP(Matrix2d* mat1, float con);
@@ -60,11 +62,23 @@ public:
     static Matrix2d* callSubtraction(Matrix2d* mat1, Matrix2d* mat2);
     static Matrix2d* callSubtraction(Matrix2d* mat1, float con);
     static Matrix2d* callPower(Matrix2d* mat1, float con);
+
+    //activation methods
+    static Matrix2d* callActivationSigmoid(Matrix2d* mat1);
+    static Matrix2d* callActivationSigmoid(Matrix2d *mat1, Matrix2d *result);
 };
 
 //method that does not need the class name (for clarity)
 static Matrix::Matrix2d* cross(Matrix::Matrix2d* mat1, Matrix::Matrix2d* mat2, Matrix::Matrix2d* result){
-    return Matrix::callCrossP(mat1,mat2,result);
+    return Matrix::callCrossPrefetching(mat1,mat2,result);
+}
+
+static Matrix::Matrix2d* transpose(Matrix::Matrix2d* mat1, Matrix::Matrix2d* result){
+    return Matrix::callTranspose(mat1, result);
+}
+
+static Matrix::Matrix2d* sigmoid(Matrix::Matrix2d* mat1, Matrix::Matrix2d* result){
+    return Matrix::callActivationSigmoid(mat1, result);
 }
 
 #endif //CUDANNGEN2_MATRIX_CUH
