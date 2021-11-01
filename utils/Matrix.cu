@@ -59,7 +59,7 @@ __global__ void crossP(Matrix::Matrix2d* mat1, Matrix::Matrix2d* mat2, Matrix::M
     result->set(row, col, currentValue);
 }
 
-/*constants : TILE_SIZE = blockSize.x = blockSize.y,
+/* constants : TILE_SIZE = blockSize.x = blockSize.y,
  * A normal tiling method that uses shared memory to accelerate calculation
  */
 __global__ void crossTiling(Matrix::Matrix2d* mat1, Matrix::Matrix2d* mat2, Matrix::Matrix2d* result){
@@ -250,6 +250,11 @@ void Matrix::callAllocZero(Matrix::Matrix2d *mat1) {
     (void) cudaDeviceSynchronize();
 }
 
+
+
+//method callings
+// ===============================================================
+
 Matrix::Matrix2d *Matrix::callCrossPOlD(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2, Matrix::Matrix2d *result) {
     dim3 gridSize = dim3((mat1->colcount + CUDA_BLOCK_SIZE.x - 1) / CUDA_BLOCK_SIZE.x,
                          (mat1->rowcount + CUDA_BLOCK_SIZE.y - 1) / CUDA_BLOCK_SIZE.y);
@@ -257,9 +262,6 @@ Matrix::Matrix2d *Matrix::callCrossPOlD(Matrix::Matrix2d *mat1, Matrix::Matrix2d
     (void) cudaDeviceSynchronize();
     return result;
 }
-
-//method callings
-// ===============================================================
 
 Matrix::Matrix2d* Matrix::callCrossP(Matrix2d* mat1, Matrix2d* mat2, Matrix2d* result) {
     assert(CUDA_BLOCK_SIZE.x == CUDA_BLOCK_SIZE.y && TILE_SIZE == CUDA_BLOCK_SIZE.x);
