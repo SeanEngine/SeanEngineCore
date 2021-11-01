@@ -6,6 +6,8 @@
 #include <string>
 #include <iostream>
 #include <cassert>
+#include <windows.h>
+#include <profileapi.h>
 
 using namespace std;
 
@@ -57,7 +59,9 @@ __global__ void crossP(Matrix::Matrix2d* mat1, Matrix::Matrix2d* mat2, Matrix::M
     result->set(row, col, currentValue);
 }
 
-//constants : TILE_SIZE = blockSize.x = blockSize.y,
+/*constants : TILE_SIZE = blockSize.x = blockSize.y,
+ * A normal tiling method that uses shared memory to accelerate calculation
+ */
 __global__ void crossTiling(Matrix::Matrix2d* mat1, Matrix::Matrix2d* mat2, Matrix::Matrix2d* result){
 
     __shared__ float mat1_tile[TILE_SIZE][TILE_SIZE];
@@ -89,6 +93,8 @@ __global__ void crossTiling(Matrix::Matrix2d* mat1, Matrix::Matrix2d* mat2, Matr
  * This method requires the distribution of grid and blocks to be:
  *     dim3 blockSize(TILE_SIZE, VECTOR_SIZE);
  *     dim3 grid(mat2->colcount / (TILE_SIZE * VECTOR_SIZE), mat1->rowcount / TILE_SIZE);
+ * This method use registers to accelerate the process while using outer product instead of inner product
+ * this will reduce the computation time cost by 1 cycle per multiplication
  */
 
 __global__ void crossCompOpt(Matrix::Matrix2d* mat1, Matrix::Matrix2d* mat2, Matrix::Matrix2d* result){
@@ -143,13 +149,14 @@ __global__ void crossPrefetching(Matrix::Matrix2d* mat1, Matrix::Matrix2d* mat2,
     float *cur = mat1Tile;
     float *next = mat1TileNext;
 
-    for (int tileId = 1; tileId < (mat1->colcount + TILE_SIZE-1)/TILE_SIZE; tileId++ ){
-        for (int i = 0; i < TILE_SIZE / VECTOR_SIZE; i++) {
-            //transpose the matrix segment
-            next[threadIdx.x * TILE_SIZE + i * VECTOR_SIZE + threadIdx.y]= mat1->
-                    get(blockIdx.y * TILE_SIZE + i*VECTOR_SIZE + threadIdx.y, tileId*TILE_SIZE + threadIdx.x);
+    for (int tileId = 0; tileId < (mat1->colcount + TILE_SIZE-1)/TILE_SIZE; tileId++ ){
+        if((tileId+1) * TILE_SIZE < mat1->colcount) {
+            for (int i = 0; i < TILE_SIZE / VECTOR_SIZE; i++) {
+                //transpose the matrix segment
+                next[threadIdx.x * TILE_SIZE + i * VECTOR_SIZE + threadIdx.y] = mat1->
+                        get(blockIdx.y * TILE_SIZE + i * VECTOR_SIZE + threadIdx.y, tileId * TILE_SIZE + threadIdx.x);
+            }
         }
-        __syncthreads();
 
         #pragma unroll
         for (int row = 0; row < TILE_SIZE; row++){
@@ -172,7 +179,27 @@ __global__ void crossPrefetching(Matrix::Matrix2d* mat1, Matrix::Matrix2d* mat2,
     }
 }
 
+__global__ void constantProduct(Matrix::Matrix2d* mat1, float con){
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    mat1->set(row,col,mat1->get(row,col) * con);
+}
+
+__global__ void addition(Matrix::Matrix2d* mat1, Matrix::Matrix2d* mat2){
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    mat1->set(row,col,mat1->get(row,col) + mat2->get(row,col));
+}
+
+__global__ void addition(Matrix::Matrix2d* mat1, float con){
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    mat1->set(row,col,mat1->get(row,col) + con);
+}
+
 //memory Control:
+// ===============================================================
+
 void Matrix::callAllocElementH(Matrix::Matrix2d *mat1, int row, int col) {
     mat1->rowcount = row;
     mat1->colcount = col;
@@ -187,9 +214,14 @@ void Matrix::callAllocElementD(Matrix::Matrix2d *mat1, int row, int col) {
 
 
 void Matrix::callAllocRandom(Matrix::Matrix2d *mat1) {
+    LARGE_INTEGER cpuFre;
+    LARGE_INTEGER begin;
+
+    QueryPerformanceFrequency(&cpuFre);
+    QueryPerformanceCounter(&begin);
     dim3 gridSize = dim3((mat1->colcount + CUDA_BLOCK_SIZE.x-1) / CUDA_BLOCK_SIZE.x,
                          (mat1->rowcount + CUDA_BLOCK_SIZE.y-1) / CUDA_BLOCK_SIZE.y);
-    allocRandom<<<gridSize, CUDA_BLOCK_SIZE>>>(time(nullptr),mat1);
+    allocRandom<<<gridSize, CUDA_BLOCK_SIZE>>>((long)(&begin.QuadPart),mat1);
     (void) cudaDeviceSynchronize();
 }
 
@@ -209,6 +241,8 @@ Matrix::Matrix2d *Matrix::callCrossPOlD(Matrix::Matrix2d *mat1, Matrix::Matrix2d
 }
 
 //method callings
+// ===============================================================
+
 Matrix::Matrix2d* Matrix::callCrossP(Matrix2d* mat1, Matrix2d* mat2, Matrix2d* result) {
     assert(CUDA_BLOCK_SIZE.x == CUDA_BLOCK_SIZE.y && TILE_SIZE == CUDA_BLOCK_SIZE.x);
     assert(mat1->colcount == mat2->rowcount && mat1->rowcount == result->rowcount && mat2->colcount == result->colcount);
@@ -224,21 +258,43 @@ Matrix::Matrix2d *Matrix::callCrossCompOpt(Matrix::Matrix2d *mat1, Matrix::Matri
     dim3 blockSize = dim3(TILE_SIZE, VECTOR_SIZE);
     dim3 grid = dim3((mat2->colcount + (TILE_SIZE * VECTOR_SIZE)-1) /
             (TILE_SIZE * VECTOR_SIZE), (mat1->rowcount + TILE_SIZE -1) / TILE_SIZE);
+    (void) crossCompOpt<<<grid, blockSize>>>(mat1, mat2, result);
+    (void) cudaDeviceSynchronize();
+    return result;
+}
+
+Matrix::Matrix2d *Matrix::callCrossPrefetching(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2, Matrix::Matrix2d *result) {
+    assert(mat1->colcount == mat2->rowcount && mat1->rowcount == result->rowcount && mat2->colcount == result->colcount);
+    dim3 blockSize = dim3(TILE_SIZE, VECTOR_SIZE);
+    dim3 grid = dim3((mat2->colcount + (TILE_SIZE * VECTOR_SIZE)-1) /
+                     (TILE_SIZE * VECTOR_SIZE), (mat1->rowcount + TILE_SIZE -1) / TILE_SIZE);
     (void) crossPrefetching<<<grid, blockSize>>>(mat1, mat2, result);
     (void) cudaDeviceSynchronize();
     return result;
 }
 
 Matrix::Matrix2d *Matrix::callConstantP(Matrix::Matrix2d *mat1, float con) {
-    return nullptr;
+    dim3 gridSize = dim3((mat1->colcount + CUDA_BLOCK_SIZE.x-1) / (CUDA_BLOCK_SIZE.x),
+                         (mat1->rowcount + CUDA_BLOCK_SIZE.y-1) / CUDA_BLOCK_SIZE.y);
+    (void) constantProduct<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1,con);
+    (void) cudaDeviceSynchronize();
+    return mat1;
 }
 
 Matrix::Matrix2d *Matrix::callAddition(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2) {
-    return nullptr;
+    dim3 gridSize = dim3((mat1->colcount + CUDA_BLOCK_SIZE.x-1) / (CUDA_BLOCK_SIZE.x),
+                         (mat1->rowcount + CUDA_BLOCK_SIZE.y-1) / CUDA_BLOCK_SIZE.y);
+    (void) addition<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1, mat2);
+    (void) cudaDeviceSynchronize();
+    return mat1;
 }
 
 Matrix::Matrix2d *Matrix::callAddition(Matrix::Matrix2d *mat1, float con) {
-    return nullptr;
+    dim3 gridSize = dim3((mat1->colcount + CUDA_BLOCK_SIZE.x-1) / (CUDA_BLOCK_SIZE.x),
+                         (mat1->rowcount + CUDA_BLOCK_SIZE.y-1) / CUDA_BLOCK_SIZE.y);
+    (void) addition<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1, con);
+    (void) cudaDeviceSynchronize();
+    return mat1;
 }
 
 Matrix::Matrix2d *Matrix::callSubtraction(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2) {
