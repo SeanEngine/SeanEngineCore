@@ -197,6 +197,24 @@ __global__ void addition(Matrix::Matrix2d* mat1, float con){
     mat1->set(row,col,mat1->get(row,col) + con);
 }
 
+__global__ void subtraction(Matrix::Matrix2d* mat1, Matrix::Matrix2d* mat2){
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    mat1->set(row,col,mat1->get(row,col) - mat2->get(row,col));
+}
+
+__global__ void subtraction(Matrix::Matrix2d* mat1, float con){
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    mat1->set(row,col,mat1->get(row,col) - con);
+}
+
+__global__ void power(Matrix::Matrix2d* mat1, float con){
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    mat1->set(row,col,pow(mat1->get(row,col),con));
+}
+
 //memory Control:
 // ===============================================================
 
@@ -298,21 +316,33 @@ Matrix::Matrix2d *Matrix::callAddition(Matrix::Matrix2d *mat1, float con) {
 }
 
 Matrix::Matrix2d *Matrix::callSubtraction(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2) {
-    return nullptr;
+    dim3 gridSize = dim3((mat1->colcount + CUDA_BLOCK_SIZE.x-1) / (CUDA_BLOCK_SIZE.x),
+                         (mat1->rowcount + CUDA_BLOCK_SIZE.y-1) / CUDA_BLOCK_SIZE.y);
+    (void) subtraction<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1, mat2);
+    (void) cudaDeviceSynchronize();
+    return mat1;
 }
+
 
 Matrix::Matrix2d *Matrix::callSubtraction(Matrix::Matrix2d *mat1, float con) {
-    return nullptr;
+    dim3 gridSize = dim3((mat1->colcount + CUDA_BLOCK_SIZE.x-1) / (CUDA_BLOCK_SIZE.x),
+                         (mat1->rowcount + CUDA_BLOCK_SIZE.y-1) / CUDA_BLOCK_SIZE.y);
+    (void) subtraction<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1, con);
+    (void) cudaDeviceSynchronize();
+    return mat1;
 }
 
-Matrix::Matrix2d *Matrix::callPower(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2) {
-    return nullptr;
-}
+
 
 Matrix::Matrix2d *Matrix::callPower(Matrix::Matrix2d *mat1, float con) {
-    return nullptr;
+    dim3 gridSize = dim3((mat1->colcount + CUDA_BLOCK_SIZE.x-1) / (CUDA_BLOCK_SIZE.x),
+                         (mat1->rowcount + CUDA_BLOCK_SIZE.y-1) / CUDA_BLOCK_SIZE.y);
+    (void) power<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1, con);
+    (void) cudaDeviceSynchronize();
+    return mat1;
 }
 
+//debug tools
 void Matrix::inspect(Matrix2d *mat1) {
     Matrix2d* debug;
     cudaMallocHost(reinterpret_cast<void**>(&debug), mat1->colcount * mat1->rowcount * sizeof(float));
@@ -344,10 +374,6 @@ Matrix::Matrix2d *Matrix::Matrix2d::operator-(Matrix::Matrix2d *mat2) {
 
 Matrix::Matrix2d *Matrix::Matrix2d::operator-(float con) {
     return callSubtraction(this,con);
-}
-
-Matrix::Matrix2d *Matrix::Matrix2d::operator^(Matrix::Matrix2d *mat2) {
-    return callPower(this, mat2);
 }
 
 Matrix::Matrix2d *Matrix::Matrix2d::operator^(float con) {

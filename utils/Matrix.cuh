@@ -27,7 +27,6 @@ public:
         Matrix2d* operator+(float con);
         Matrix2d* operator-(Matrix2d* mat2);
         Matrix2d* operator-(float con);
-        Matrix2d* operator^(Matrix2d* mat2);
         Matrix2d* operator^(float con);
         Matrix2d* operator*(float con);
 
@@ -60,7 +59,6 @@ public:
     static Matrix2d* callAddition(Matrix2d* mat1, float con);
     static Matrix2d* callSubtraction(Matrix2d* mat1, Matrix2d* mat2);
     static Matrix2d* callSubtraction(Matrix2d* mat1, float con);
-    static Matrix2d* callPower(Matrix2d* mat1, Matrix2d* mat2);
     static Matrix2d* callPower(Matrix2d* mat1, float con);
 };
 
