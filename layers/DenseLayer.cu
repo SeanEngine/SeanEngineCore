@@ -13,3 +13,9 @@ void DenseLayer::activate(Matrix::Matrix2d *prevNodes) {
     this->z = *cross(this->weights, prevNodes, this->z) + this->biases;
     this->nodes = sigmoid(this->z, this->nodes);
 }
+//E = (al - y) *hadmard* (sigmoidDerivative(z))
+void DenseLayer::reflectOutput(Matrix::Matrix2d *correctOut) {
+    copyD2D(this->nodes, this->errors);
+    this->errors = *(*this->errors-correctOut)*sigmoidD(this->z,this->z);
+}
+

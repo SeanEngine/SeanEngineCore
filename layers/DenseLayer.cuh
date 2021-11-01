@@ -41,6 +41,8 @@ public:
      }
 
      void activate(Matrix::Matrix2d* prevNodes);
+
+     void reflectOutput(Matrix::Matrix2d* correctOut);
 };
 
 

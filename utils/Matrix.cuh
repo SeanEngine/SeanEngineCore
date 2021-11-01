@@ -29,6 +29,7 @@ public:
         Matrix2d* operator-(Matrix2d* mat2);
         Matrix2d* operator-(float con);
         Matrix2d* operator^(float con);
+        Matrix2d* operator*(Matrix2d* mat2);
         Matrix2d* operator*(float con);
 
         //get the element at the particular location
@@ -47,6 +48,7 @@ public:
     static void callAllocElementD(Matrix2d *mat1, int row, int col);
     static void callAllocRandom(Matrix2d *mat1);
     static void callAllocZero(Matrix2d *mat1);
+    static Matrix2d* callCopyD2D(Matrix2d *src, Matrix2d *dist);
 
     //method callings
     static Matrix2d* callCrossP(Matrix2d* mat1, Matrix2d* mat2, Matrix2d* result);
@@ -56,6 +58,7 @@ public:
     static Matrix2d* callTranspose(Matrix2d* mat1, Matrix2d* result);
 
     //operator methods and normal operations
+    static Matrix2d* callHadmardP(Matrix2d* mat1, Matrix2d* mat2);
     static Matrix2d* callConstantP(Matrix2d* mat1, float con);
     static Matrix2d* callAddition(Matrix2d* mat1, Matrix2d* mat2);
     static Matrix2d* callAddition(Matrix2d* mat1, float con);
@@ -66,6 +69,7 @@ public:
     //activation methods
     static Matrix2d* callActivationSigmoid(Matrix2d* mat1);
     static Matrix2d* callActivationSigmoid(Matrix2d *mat1, Matrix2d *result);
+    static Matrix2d* callDerivativeSigmoid(Matrix2d *mat1, Matrix2d *result);
 };
 
 //method that does not need the class name (for clarity)
@@ -79,6 +83,14 @@ static Matrix::Matrix2d* transpose(Matrix::Matrix2d* mat1, Matrix::Matrix2d* res
 
 static Matrix::Matrix2d* sigmoid(Matrix::Matrix2d* mat1, Matrix::Matrix2d* result){
     return Matrix::callActivationSigmoid(mat1, result);
+}
+
+static Matrix::Matrix2d* sigmoidD(Matrix::Matrix2d* mat1, Matrix::Matrix2d* result){
+    return Matrix::callDerivativeSigmoid(mat1, result);
+}
+
+static Matrix::Matrix2d* copyD2D(Matrix::Matrix2d* src, Matrix::Matrix2d* dist){
+    return Matrix::callCopyD2D(src, dist);
 }
 
 #endif //CUDANNGEN2_MATRIX_CUH

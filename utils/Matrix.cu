@@ -179,6 +179,12 @@ __global__ void crossPrefetching(Matrix::Matrix2d* mat1, Matrix::Matrix2d* mat2,
     }
 }
 
+__global__ void hadmardProduct(Matrix::Matrix2d* mat1, Matrix::Matrix2d* mat2){
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    mat1->set(row,col,mat1->get(row,col) * mat2->get(row,col));
+}
+
 __global__ void constantProduct(Matrix::Matrix2d* mat1, float con){
     int row = blockIdx.y * blockDim.y + threadIdx.y;
     int col = blockIdx.x * blockDim.x + threadIdx.x;
@@ -228,11 +234,22 @@ __global__ void sigmoidActivation(Matrix::Matrix2d* mat1){
     mat1->set(row, col, 1.0f/(1.0f + exp(-x)));
 }
 
+__device__ float sigmoidCalc(float x){
+    return 1.0f/(1.0f + exp(-x));
+}
+
 __global__ void sigmoidActivation(Matrix::Matrix2d* mat1, Matrix::Matrix2d* result){
     int row = blockIdx.y * blockDim.y + threadIdx.y;
     int col = blockIdx.x * blockDim.x + threadIdx.x;
     float x = mat1->get(row, col);
-    result->set(row, col, 1.0f/(1.0f + exp(-x)));
+    result->set(row, col, sigmoidCalc(x));
+}
+
+__global__ void sigmoidDerivative(Matrix::Matrix2d* mat1, Matrix::Matrix2d* result){
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    float x = mat1->get(row, col);
+    result->set(row, col, sigmoidCalc(x)*(1.0f - sigmoidCalc(x)));
 }
 
 //memory Control:
@@ -242,8 +259,8 @@ void Matrix::callAllocElementH(Matrix::Matrix2d *mat1, int row, int col) {
     mat1->rowcount = row;
     mat1->colcount = col;
     (void)cudaMallocHost(reinterpret_cast<void**>(&mat1->elements),row*col*sizeof(float));
-} 4
- 4
+}
+
 void Matrix::callAllocElementD(Matrix::Matrix2d *mat1, int row, int col) {
     mat1->rowcount = row;
     mat1->colcount = col;
@@ -269,6 +286,12 @@ void Matrix::callAllocZero(Matrix::Matrix2d *mat1) {
     allocZero<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1);
     (void) cudaDeviceSynchronize();
 }
+
+Matrix::Matrix2d* Matrix::callCopyD2D(Matrix::Matrix2d *src, Matrix::Matrix2d *dist) {
+     cudaMemcpy(dist->elements, src->elements, sizeof(float) * src->rowcount * src -> colcount, cudaMemcpyDeviceToDevice);
+     return dist;
+}
+
 
 
 
@@ -311,6 +334,14 @@ Matrix::Matrix2d *Matrix::callCrossPrefetching(Matrix::Matrix2d *mat1, Matrix::M
     (void) crossPrefetching<<<grid, blockSize>>>(mat1, mat2, result);
     (void) cudaDeviceSynchronize();
     return result;
+}
+
+Matrix::Matrix2d *Matrix::callHadmardP(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2) {
+    dim3 gridSize = dim3((mat1->colcount + CUDA_BLOCK_SIZE.x-1) / (CUDA_BLOCK_SIZE.x),
+                         (mat1->rowcount + CUDA_BLOCK_SIZE.y-1) / CUDA_BLOCK_SIZE.y);
+    (void) hadmardProduct<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1,mat2);
+    (void) cudaDeviceSynchronize();
+    return mat1;
 }
 
 Matrix::Matrix2d *Matrix::callConstantP(Matrix::Matrix2d *mat1, float con) {
@@ -405,9 +436,16 @@ Matrix::Matrix2d *Matrix::callActivationSigmoid(Matrix::Matrix2d *mat1, Matrix::
                          (mat1->rowcount + CUDA_BLOCK_SIZE.y-1) / CUDA_BLOCK_SIZE.y);
     (void) sigmoidActivation<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1, result);
     (void) cudaDeviceSynchronize();
-    return mat1;
+    return result;
 }
 
+Matrix::Matrix2d *Matrix::callDerivativeSigmoid(Matrix::Matrix2d *mat1, Matrix::Matrix2d *result) {
+    dim3 gridSize = dim3((mat1->colcount + CUDA_BLOCK_SIZE.x-1) / (CUDA_BLOCK_SIZE.x),
+                         (mat1->rowcount + CUDA_BLOCK_SIZE.y-1) / CUDA_BLOCK_SIZE.y);
+    (void) sigmoidDerivative<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1, result);
+    (void) cudaDeviceSynchronize();
+    return result;
+}
 
 //operators
 Matrix::Matrix2d *Matrix::Matrix2d::operator+(Matrix::Matrix2d *mat2) {
@@ -432,6 +470,10 @@ Matrix::Matrix2d *Matrix::Matrix2d::operator^(float con) {
 
 Matrix::Matrix2d *Matrix::Matrix2d::operator*(float con) {
     return callConstantP(this, con);
+}
+
+Matrix::Matrix2d *Matrix::Matrix2d::operator*(Matrix::Matrix2d *mat2) {
+    return callHadmardP(this, mat2);
 }
 
 
