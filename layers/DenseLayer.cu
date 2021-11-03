@@ -10,12 +10,11 @@ string DenseLayer::getType() {
 
 //z = w * a + b , a1 = sigmoid(z)
 void DenseLayer::activate(Matrix::Matrix2d *prevNodes) {
-    this->z = *cross(this->weights, prevNodes, this->z) + this->biases;
-    this->nodes = sigmoid(this->z, this->nodes);
+    nodes = sigmoid(*cross(weights, prevNodes, z) + biases, nodes);
 }
 //E = (al - y) *hadmard* (sigmoidDerivative(z))
 void DenseLayer::reflectOutput(Matrix::Matrix2d *correctOut) {
-    copyD2D(this->nodes, this->errors);
-    this->errors = *(*this->errors-correctOut)*sigmoidD(this->z,this->z);
+    copyD2D(nodes, errors);
+    errors = *(*errors-correctOut)*sigmoidD(z,z);
 }
 

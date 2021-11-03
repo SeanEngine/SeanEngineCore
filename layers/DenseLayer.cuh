@@ -22,12 +22,12 @@ public:
          this->id = LayerID;
 
          //allocate matrix callers
-         cudaMallocHost(reinterpret_cast<void**>(&nodes), sizeof(Matrix::Matrix2d));
-         cudaMallocHost(reinterpret_cast<void**>(&weights), sizeof(Matrix::Matrix2d));
-         cudaMallocHost(reinterpret_cast<void**>(&biases), sizeof(Matrix::Matrix2d));
-         cudaMallocHost(reinterpret_cast<void**>(&z), sizeof(Matrix::Matrix2d));
-         cudaMallocHost(reinterpret_cast<void**>(&weightDerivatives), sizeof(Matrix::Matrix2d));
-         cudaMallocHost(reinterpret_cast<void**>(&errors), sizeof(Matrix::Matrix2d));
+         cudaMallocHost((void**)(&nodes), sizeof(Matrix::Matrix2d));
+         cudaMallocHost((void**)(&weights), sizeof(Matrix::Matrix2d));
+         cudaMallocHost((void**)(&biases), sizeof(Matrix::Matrix2d));
+         cudaMallocHost((void**)(&z), sizeof(Matrix::Matrix2d));
+         cudaMallocHost((void**)(&weightDerivatives), sizeof(Matrix::Matrix2d));
+         cudaMallocHost((void**)(&errors), sizeof(Matrix::Matrix2d));
 
          //allocate matrix
          Matrix::callAllocElementD(nodes, NODE_NUMBER, 1);
@@ -43,6 +43,8 @@ public:
      void activate(Matrix::Matrix2d* prevNodes);
 
      void reflectOutput(Matrix::Matrix2d* correctOut);
+
+
 };
 
 

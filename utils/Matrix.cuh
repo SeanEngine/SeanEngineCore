@@ -56,6 +56,7 @@ public:
     static Matrix2d* callCrossCompOpt(Matrix2d* mat1, Matrix2d* mat2, Matrix2d* result);
     static Matrix2d* callCrossPOLD(Matrix2d* mat1, Matrix2d* mat2, Matrix2d* result);
     static Matrix2d* callTranspose(Matrix2d* mat1, Matrix2d* result);
+    static void callSum(Matrix2d *mat1, float* sumBuffer);
 
     //operator methods and normal operations
     static Matrix2d* callHadmardP(Matrix2d* mat1, Matrix2d* mat2);
@@ -91,6 +92,10 @@ static Matrix::Matrix2d* sigmoidD(Matrix::Matrix2d* mat1, Matrix::Matrix2d* resu
 
 static Matrix::Matrix2d* copyD2D(Matrix::Matrix2d* src, Matrix::Matrix2d* dist){
     return Matrix::callCopyD2D(src, dist);
+}
+
+static void sum(Matrix::Matrix2d* mat1, float* result){
+    Matrix::callSum(mat1, result);
 }
 
 #endif //CUDANNGEN2_MATRIX_CUH
