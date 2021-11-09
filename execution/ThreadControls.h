@@ -35,14 +35,14 @@ struct dim3i{
  *     each thread need to be 3 + your argNum, you should be aware of this while setting
  *     up your methods.
  *
- *     You should call the threadIdx by arg[argNum-1] and flags by arg[argNum-2]
- *
  *     for other of your args, call them with arg indexes according to your parameters
- *
  *     To code a TC function, using the following template:
  *
  *     for async :
  *     void func(vector<void*>* args, dim3i blockSize, dim3i threadId)
+ *
+ *     for sync :
+ *     void func(vector<void*>* args, dim3i blockSize, dim3i threadId, int* executionFlags)
  */
 class ThreadControls {
 public:
@@ -56,7 +56,8 @@ public:
     static void _syncThreads(dim3i threadId, dim3i blockSize, int *executionFlags);
 };
 
-static void __alloc(dim3i blockSize, void (*function)(vector<void*>*, dim3i, dim3i), vector<void*>* args){
+//this method detaches threads after creating them, I do not recommend using this though I provided the method
+[[deprecated]] static void __alloc(dim3i blockSize, void (*function)(vector<void*>*, dim3i, dim3i), vector<void*>* args){
     ThreadControls::_alloc(blockSize, function, args);
 }
 
