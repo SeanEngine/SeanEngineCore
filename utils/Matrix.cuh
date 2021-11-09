@@ -11,7 +11,7 @@
 #include <ctime>
 
 
-static const dim3 CUDA_BLOCK_SIZE = dim3(16,16);
+static const dim3 CUDA_BLOCK_SIZE = dim3(16, 16);
 static const int TILE_SIZE = 16;
 static const int VECTOR_SIZE = 4;
 
@@ -29,7 +29,7 @@ public:
         Matrix2d* operator-(Matrix2d* mat2);
         Matrix2d* operator-(float con);
         Matrix2d* operator^(float con);
-        Matrix2d* operator*(Matrix2d* mat2);
+        Matrix2d* operator*(Matrix2d* mat2);  //hadmard product, not cross product
         Matrix2d* operator*(float con);
 
         //get the element at the particular location
@@ -51,7 +51,7 @@ public:
     static Matrix2d* callCopyD2D(Matrix2d *src, Matrix2d *dist);
 
     //method callings
-    static Matrix2d* callCrossP(Matrix2d* mat1, Matrix2d* mat2, Matrix2d* result);
+    static Matrix2d* callCross(Matrix2d* mat1, Matrix2d* mat2, Matrix2d* result);
     static Matrix2d* callCrossPrefetching(Matrix2d *mat1, Matrix2d *mat2, Matrix2d *result);
     static Matrix2d* callCrossCompOpt(Matrix2d* mat1, Matrix2d* mat2, Matrix2d* result);
     static Matrix2d* callCrossPOLD(Matrix2d* mat1, Matrix2d* mat2, Matrix2d* result);
