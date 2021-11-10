@@ -6,7 +6,7 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
 add_executable(CudaNNGen2 main.cu utils/Matrix.cu utils/Matrix.cuh utils/logger.cu utils/logger.cuh layers/Layer.cu
-        layers/Layer.cuh layers/DenseLayer.cu layers/DenseLayer.cuh execution/ThreadControls.cpp execution/ThreadControls.h)
+        layers/Layer.cuh layers/DenseLayer.cu layers/DenseLayer.cuh execution/ThreadControls.cpp execution/ThreadControls.h engine/Engine.cu engine/Engine.cuh models/Model.cu models/Model.cuh)
 target_link_libraries(CudaNNGen2 cublas.lib)
 target_link_libraries(CudaNNGen2 Threads::Threads)
 
