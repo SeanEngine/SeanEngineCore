@@ -25,6 +25,7 @@ public:
 
         //operator definitions
         Matrix2d* operator+(Matrix2d* mat2);
+        Matrix2d* operator+=(Matrix2d* mat2);
         Matrix2d* operator+(float con);
         Matrix2d* operator-(Matrix2d* mat2);
         Matrix2d* operator-(float con);
@@ -35,6 +36,7 @@ public:
         //get the element at the particular location
         __device__ float get(int row, int col) const  ;
         __device__ void set(int row, int col, float value) const ;
+        __device__ void add(int row, int col, float value) const ;
     };
 
     //faster calculation methods
@@ -53,6 +55,7 @@ public:
     //method callings
     static Matrix2d* callCross(Matrix2d* mat1, Matrix2d* mat2, Matrix2d* result);
     static Matrix2d* callCrossPrefetching(Matrix2d *mat1, Matrix2d *mat2, Matrix2d *result);
+    static Matrix2d* callCrossPrefetchingA(Matrix2d *mat1, Matrix2d *mat2, Matrix2d *result);
     static Matrix2d* callCrossCompOpt(Matrix2d* mat1, Matrix2d* mat2, Matrix2d* result);
     static Matrix2d* callCrossPOLD(Matrix2d* mat1, Matrix2d* mat2, Matrix2d* result);
     static Matrix2d* callTranspose(Matrix2d* mat1, Matrix2d* result);
@@ -76,6 +79,10 @@ public:
 //method that does not need the class name (for clarity)
 static Matrix::Matrix2d* cross(Matrix::Matrix2d* mat1, Matrix::Matrix2d* mat2, Matrix::Matrix2d* result){
     return Matrix::callCrossPrefetching(mat1,mat2,result);
+}
+
+static Matrix::Matrix2d* crossA(Matrix::Matrix2d* mat1, Matrix::Matrix2d* mat2, Matrix::Matrix2d* result){
+    return Matrix::callCrossPrefetchingA(mat1,mat2,result);
 }
 
 static Matrix::Matrix2d* transpose(Matrix::Matrix2d* mat1, Matrix::Matrix2d* result){

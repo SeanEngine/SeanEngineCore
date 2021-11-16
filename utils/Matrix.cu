@@ -18,7 +18,12 @@ __device__ float Matrix::Matrix2d::get(int row, int col) const   {
 
 __device__ void Matrix::Matrix2d::set(int row, int col, float value) const   {
     if(row < rowcount && col < colcount)
-    this->elements[row * this->colcount + col] = value;
+       this->elements[row * this->colcount + col] = value;
+}
+
+__device__ void Matrix::Matrix2d::add(int row, int col, float value) const {
+    if(row < rowcount && col < colcount)
+        this->elements[row * this->colcount + col] += value;
 }
 
 __device__ float Matrix::fasterSqrt(float in) {
@@ -178,6 +183,56 @@ __global__ void crossPrefetching(Matrix::Matrix2d* mat1, Matrix::Matrix2d* mat2,
         result->set(resultRow0 + bufId, resultCol, resultBuffer[bufId]);
     }
 }
+
+//this is basically the same as compOpt but with a tile of mat1 prefetched
+__global__ void crossPrefetchingA(Matrix::Matrix2d* mat1, Matrix::Matrix2d* mat2, Matrix::Matrix2d* result){
+
+    __shared__ float mat1Tile[TILE_SIZE*TILE_SIZE];
+    __shared__ float mat1TileNext[TILE_SIZE*TILE_SIZE];
+    float mat2Value = 0.0f;
+    float resultBuffer[TILE_SIZE] = {0};
+
+    int resultCol = VECTOR_SIZE*TILE_SIZE*blockIdx.x + threadIdx.y * TILE_SIZE + threadIdx.x;
+    for (int i = 0; i < TILE_SIZE / VECTOR_SIZE; i++) {
+        //transposeOperation the matrix segment
+        mat1Tile[threadIdx.x*TILE_SIZE + i * VECTOR_SIZE + threadIdx.y]= mat1->
+                get(blockIdx.y * TILE_SIZE + i*VECTOR_SIZE + threadIdx.y, threadIdx.x);
+    }
+    __syncthreads();
+
+    float *cur = mat1Tile;
+    float *next = mat1TileNext;
+
+    for (int tileId = 0; tileId < (mat1->colcount + TILE_SIZE-1)/TILE_SIZE; tileId++ ){
+        if((tileId+1) * TILE_SIZE < mat1->colcount) {
+            for (int i = 0; i < TILE_SIZE / VECTOR_SIZE; i++) {
+                //transposeOperation the matrix segment
+                next[threadIdx.x * TILE_SIZE + i * VECTOR_SIZE + threadIdx.y] = mat1->
+                        get(blockIdx.y * TILE_SIZE + i * VECTOR_SIZE + threadIdx.y, tileId * TILE_SIZE + threadIdx.x);
+            }
+        }
+
+#pragma unroll
+        for (int row = 0; row < TILE_SIZE; row++){
+            //pick a value of mat2 and put it into the registers
+            mat2Value = mat2->get(tileId * TILE_SIZE + row,resultCol);
+            for (int bufId = 0; bufId < TILE_SIZE; bufId++){
+                resultBuffer[bufId] += cur[row* TILE_SIZE + bufId] * mat2Value;
+            }
+        }
+        __syncthreads();
+
+        //swap the pointers
+        auto tmp = cur;
+        cur = next;
+        next = tmp;
+    }
+    int resultRow0 = blockIdx.y * TILE_SIZE;
+    for (int bufId = 0; bufId <TILE_SIZE; bufId++){
+        result->add(resultRow0 + bufId, resultCol, resultBuffer[bufId]);
+    }
+}
+
 
 __global__ void reduction(float* input, float* result){
 
@@ -360,6 +415,16 @@ Matrix::Matrix2d *Matrix::callCrossPrefetching(Matrix::Matrix2d *mat1, Matrix::M
     return result;
 }
 
+Matrix::Matrix2d *Matrix::callCrossPrefetchingA(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2, Matrix::Matrix2d *result) {
+    assert(mat1->colcount == mat2->rowcount && mat1->rowcount == result->rowcount && mat2->colcount == result->colcount);
+    dim3 blockSize = dim3(TILE_SIZE, VECTOR_SIZE);
+    dim3 grid = dim3((mat2->colcount + (TILE_SIZE * VECTOR_SIZE) - 1) /
+                     (TILE_SIZE * VECTOR_SIZE), (mat1->rowcount + TILE_SIZE -1) / TILE_SIZE);
+    crossPrefetchingA<<<grid, blockSize>>>(mat1, mat2, result);
+    cudaDeviceSynchronize();
+    return result;
+}
+
 Matrix::Matrix2d *Matrix::callHadmardP(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2) {
     dim3 gridSize = dim3((mat1->colcount + CUDA_BLOCK_SIZE.x - 1) / (CUDA_BLOCK_SIZE.x),
                          (mat1->rowcount + CUDA_BLOCK_SIZE.y-1) / CUDA_BLOCK_SIZE.y);
@@ -518,6 +583,10 @@ Matrix::Matrix2d *Matrix::Matrix2d::operator*(float con) {
 
 Matrix::Matrix2d *Matrix::Matrix2d::operator*(Matrix::Matrix2d *mat2) {
     return callHadmardP(this, mat2);
+}
+
+Matrix::Matrix2d *Matrix::Matrix2d::operator+=(Matrix::Matrix2d *mat2) {
+    return callAddition(this, mat2);
 }
 
 
