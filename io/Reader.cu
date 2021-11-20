@@ -19,13 +19,13 @@ void BMPProc(vector<void*>* args, dim3i blockSize, dim3i threadId, int* executio
     int readSize = *(int*)(*args)[0];
     auto* readBuffer = (unsigned char*)(*args)[1] + threadId.x * readSize;
     auto* bufCuda = (unsigned char*)(*args)[2] + threadId.x * readSize;
-    auto* output = ( vector<Matrix::Matrix2d *>*)(*args)[3];
+    auto* output =  ( vector<Matrix::Matrix2d *>*)(*args)[3];
     auto* outputBuf = ( vector<Matrix::Matrix2d *>*)(*args)[4];
 
     Matrix::Matrix2d* dist = (*output)[threadId.x + *(int*)(*args)[5]];
-    Matrix::Matrix2d* distBuf = (*outputBuf)[threadId.x + *(int*)(*args)[5]];
+    Matrix::Matrix2d* distBuf = (*outputBuf)[threadId.x];
 
-    assert(dist->rowcount * dist->colcount == (readSize-54)*4);  //match data size
+    //assert(dist->rowcount * dist->colcount*4 == (readSize-54));  //match data size
     dim3 gridSize = dim3((dist->colcount + CUDA_BLOCK_SIZE.x - 1) / CUDA_BLOCK_SIZE.x,
                          (dist->rowcount + CUDA_BLOCK_SIZE.y - 1) / CUDA_BLOCK_SIZE.y);
     cudaMemcpy(bufCuda, readBuffer, readSize, cudaMemcpyHostToDevice);
@@ -40,6 +40,7 @@ void readFunc(vector<void*>* args, dim3i blockSize, dim3i threadId, int* executi
     auto* names = (string*)(*args)[1];
     FILE* file;
     fopen_s(&file,names[threadId.x].c_str(), "rb");
+    assert(file!= nullptr);
     fread(readBuffer,1,readSize,file);
     fclose(file);
 }
