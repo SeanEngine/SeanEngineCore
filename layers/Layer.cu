@@ -5,5 +5,9 @@
 #include "Layer.cuh"
 
 string Layer::getType() {
-    return "UNDEFINED";
+    return "CONTAINER";
+}
+
+void Layer::activate(Layer *prevLayer) {
+    copyD2D(prevLayer->nodes, this->nodes);
 }

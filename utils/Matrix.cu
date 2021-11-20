@@ -212,7 +212,7 @@ __global__ void crossPrefetchingA(Matrix::Matrix2d* mat1, Matrix::Matrix2d* mat2
             }
         }
 
-#pragma unroll
+        #pragma unroll
         for (int row = 0; row < TILE_SIZE; row++){
             //pick a value of mat2 and put it into the registers
             mat2Value = mat2->get(tileId * TILE_SIZE + row,resultCol);

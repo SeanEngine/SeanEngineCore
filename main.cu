@@ -3,12 +3,15 @@
 #include <windows.h>
 #include <string>
 #include <iostream>
+#include "io/Reader.cuh"
 #include "cublas_v2.h"
 #include "execution/ThreadControls.h"
 
 #pragma comment(lib, "cublas.lib")
 
 using namespace std;
+
+
 int main(int argc, char** argv) {
 
 }
