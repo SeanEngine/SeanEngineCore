@@ -22,7 +22,7 @@ public:
      //read BMP files and post process them
      static void readBMPFiles(int fileCount, string* fileNames, int size, unsigned char* buffer,unsigned char *bufCuda,
                                         vector<Matrix::Matrix2d*>* output, vector<Matrix::Matrix2d *>* outputBuf,
-                                        Status status,int offset);
+                                        Status status,int offset, int offsetVec);
 };
 
 

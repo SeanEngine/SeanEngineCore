@@ -5,8 +5,9 @@
 #include "Engine.cuh"
 
 
-
+/*
 void Engine::boot(Engine::EngineConfig conf, Model* model) {
     this->config = conf;
     this->models = model;
 }
+*/

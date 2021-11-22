@@ -506,7 +506,7 @@ void Matrix::inspect(Matrix2d *mat1) {
     cudaMemcpy(debug->elements,mat1->elements,sizeof(float)*debug->colcount*debug->rowcount,cudaMemcpyDeviceToHost);
     for (int i = 0; i< debug -> rowcount; i++) {
         for (int j = 0; j < debug->colcount; j++) {
-            std::cout<<(*(debug->elements + i*debug->colcount + j))<<" ";
+            std::cout<<(*(debug->elements + i*debug->colcount + j) > 0 ? 1 : 0)<<" ";
         }
         std::cout<<std::endl;
     }

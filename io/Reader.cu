@@ -4,6 +4,8 @@
 
 #include "Reader.cuh"
 #include <cassert>
+#include <iostream>
+#include "../utils/logger.cuh"
 
 __global__ void genMat(Matrix::Matrix2d* target, unsigned char* buffer){
     int row = threadIdx.y + blockIdx.y * blockDim.y;
@@ -22,7 +24,7 @@ void BMPProc(vector<void*>* args, dim3i blockSize, dim3i threadId, int* executio
     auto* output =  ( vector<Matrix::Matrix2d *>*)(*args)[3];
     auto* outputBuf = ( vector<Matrix::Matrix2d *>*)(*args)[4];
 
-    Matrix::Matrix2d* dist = (*output)[threadId.x + *(int*)(*args)[5]];
+    Matrix::Matrix2d* dist = (*output)[threadId.x + *(int*)(*args)[5]  + *(int*)(*args)[6]];
     Matrix::Matrix2d* distBuf = (*outputBuf)[threadId.x];
 
     //assert(dist->rowcount * dist->colcount*4 == (readSize-54));  //match data size
@@ -39,9 +41,9 @@ void readFunc(vector<void*>* args, dim3i blockSize, dim3i threadId, int* executi
     auto* readBuffer = (unsigned char*)(*args)[0] + threadId.x * readSize;
     auto* names = (string*)(*args)[1];
     FILE* file;
-    fopen_s(&file,names[threadId.x].c_str(), "rb");
-    assert(file!= nullptr);
-    fread(readBuffer,1,readSize,file);
+    fopen_s(&file,names[threadId.x].c_str(), "rb+");
+    if(file== nullptr)return;
+    fread_s(readBuffer,readSize,1,readSize,file);
     fclose(file);
 }
 
@@ -56,7 +58,7 @@ unsigned char *Reader::readBytes(int fileCount, string* fileNames, int size, uns
 
 void Reader::readBMPFiles(int fileCount, string *fileNames, int size, unsigned char *buffer, unsigned char *bufCuda,
                                     vector<Matrix::Matrix2d *>* output, vector<Matrix::Matrix2d *>* outputBuf,
-                                    Status status, int offset) {
+                                    Status status, int offset, int offsetVec) {
     buffer = readBytes(fileCount, fileNames + offset, size, buffer);
 
     vector<void*> params;
@@ -66,6 +68,7 @@ void Reader::readBMPFiles(int fileCount, string *fileNames, int size, unsigned c
     params.push_back(output);
     params.push_back(outputBuf);
     params.push_back(&offset);
+    params.push_back(&offsetVec);
     switch (status) {
         case READ_RGB:break;
         case READ_GRAY:__allocSynced(dim3i(fileCount, 1), BMPProc, &params);break;

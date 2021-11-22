@@ -12,7 +12,7 @@ public:
     virtual void loadModel() = 0;
 
     //load dataset from SSD
-    virtual void loadDataSet(Engine::EngineConfig* cfg) = 0;
+    virtual void loadDataSet() = 0;
 
     //load the data batch from dataset (host memory to device memory)
     virtual void loadData() = 0;

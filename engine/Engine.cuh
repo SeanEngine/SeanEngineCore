@@ -16,17 +16,17 @@ public:
         int CPU_THREADS = 12;
 
         //execution configs  (default)
-        const char* MODEL_LOAD_PATH;
-        const char* MODEL_SAVE_PATH;
-        const char* TRAIN_DATA_PATH;
-        const char* TRAIN_LABEL_PATH;
+        char* MODEL_LOAD_PATH;
+        char* MODEL_SAVE_PATH;
+        char* TRAIN_DATA_PATH = "C:\\Users\\DanielSun\\Desktop\\resources\\mnist\\decompress_mnist\\train";
+        char* TRAIN_LABEL_PATH;
     };
 
     EngineConfig config;
-    Model* models;
+    //Model* models;
 
     //start running the engine
-    void boot(EngineConfig conf, Model* model);
+    //void boot(EngineConfig conf, Model* model);
 
 };
 
