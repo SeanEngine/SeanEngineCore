@@ -56,22 +56,35 @@ unsigned char *Reader::readBytes(int fileCount, string* fileNames, int size, uns
     return buffer;
 }
 
-void Reader::readBMPFiles(int fileCount, string *fileNames, int size, unsigned char *buffer, unsigned char *bufCuda,
-                                    vector<Matrix::Matrix2d *>* output, vector<Matrix::Matrix2d *>* outputBuf,
-                                    Status status, int offset, int offsetVec) {
-    buffer = readBytes(fileCount, fileNames + offset, size, buffer);
+/**
+ * The method for read the .bmp files
+ * @param threads The amount of threads
+ * @param fileNames The memory pointer that stores all the file names
+ * @param size The size of each file that is going to be read
+ * @param buffer The buffer on host memory (size equal to threads * size)
+ * @param bufCuda The buffer on device memory (same size as buffer)
+ * @param dataset The vec that stores all matrix (initialized)
+ * @param outputBuf The vec that stores the matrix on device memory (size equal to threads)
+ * @param status the method of reading (RGB or GRAY)
+ * @param offset the offset of reading (equal to threads * the index of iteration)
+ * @param offsetVec (optional) the total amount of files read in the previous iterations
+ */
+void Reader::readBMPFiles(int threads, string *fileNames, int size, unsigned char *buffer, unsigned char *bufCuda,
+                          vector<Matrix::Matrix2d *>* dataset, vector<Matrix::Matrix2d *>* outputBuf,
+                          Status status, int offset, int offsetVec) {
+    buffer = readBytes(threads, fileNames + offset, size, buffer);
 
     vector<void*> params;
     params.push_back(&size);
     params.push_back(buffer);
     params.push_back(bufCuda);
-    params.push_back(output);
+    params.push_back(dataset);
     params.push_back(outputBuf);
     params.push_back(&offset);
     params.push_back(&offsetVec);
     switch (status) {
         case READ_RGB:break;
-        case READ_GRAY:__allocSynced(dim3i(fileCount, 1), BMPProc, &params);break;
+        case READ_GRAY:__allocSynced(dim3i(threads, 1), BMPProc, &params);break;
     }
 
 }

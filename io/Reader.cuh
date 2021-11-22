@@ -20,9 +20,9 @@ public:
      static unsigned char* readBytes(int fileCount, string* fileNames, int size, unsigned char* buffer);
 
      //read BMP files and post process them
-     static void readBMPFiles(int fileCount, string* fileNames, int size, unsigned char* buffer,unsigned char *bufCuda,
-                                        vector<Matrix::Matrix2d*>* output, vector<Matrix::Matrix2d *>* outputBuf,
-                                        Status status,int offset, int offsetVec);
+     static void readBMPFiles(int threads, string* fileNames, int size, unsigned char* buffer, unsigned char *bufCuda,
+                              vector<Matrix::Matrix2d*>* dataset, vector<Matrix::Matrix2d *>* outputBuf,
+                              Status status, int offset, int offsetVec);
 };
 
 
