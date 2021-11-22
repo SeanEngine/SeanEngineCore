@@ -4,26 +4,27 @@
 
 #ifndef CUDANNGEN2_MODEL_CUH
 #define CUDANNGEN2_MODEL_CUH
+#include "../engine/Engine.cuh"
 
 class Model {
 public:
     //load model
-    virtual void loadModel();
+    virtual void loadModel() = 0;
 
     //load dataset from SSD
-    virtual void loadDataSet();
+    virtual void loadDataSet(Engine::EngineConfig* cfg) = 0;
 
     //load the data batch from dataset (host memory to device memory)
-    virtual void loadData();
+    virtual void loadData() = 0;
 
     //unload the data
-    virtual void unloadData();
+    virtual void unloadData() = 0;
 
     //train a batch on the model
-    virtual void train();
+    virtual void train() = 0;
 
     //run the model
-    virtual void execute();
+    virtual void execute() = 0;
 };
 
 

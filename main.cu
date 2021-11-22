@@ -19,8 +19,8 @@ int main(int argc, char **argv) {
     unsigned char* bufCuda;
     string *fileNames;
     cudaMallocHost(&fileNames, sizeof(string) * 5000);
-    cudaMallocHost(&buffer, sizeof(char)*12*2406);
-    cudaMalloc(&bufCuda, sizeof(char)*12*2406);
+    cudaMallocHost(&buffer, sizeof(char)*12*2390);
+    cudaMalloc(&bufCuda, sizeof(char)*12*2390);
     for (int i=0; i<5000; i++){
         Matrix::Matrix2d* matT;
         cudaMallocHost(&matT,sizeof(Matrix::Matrix2d));
@@ -45,9 +45,9 @@ int main(int argc, char **argv) {
 
     while(index < 5000){
         if (5000-index > 12) {
-            Reader::readBMPFiles(12, fileNames, 2406, buffer, bufCuda, &mats, &buf, Reader::READ_GRAY, index);
+            Reader::readBMPFiles(12, fileNames, 2390, buffer, bufCuda, &mats, &buf, Reader::READ_GRAY, index);
         }else{
-            Reader::readBMPFiles(5000-index, fileNames, 2406, buffer, bufCuda, &mats, &buf, Reader::READ_GRAY, index);
+            Reader::readBMPFiles(5000-index, fileNames, 2390, buffer, bufCuda, &mats, &buf, Reader::READ_GRAY, index);
         }
         index+=12;
     }

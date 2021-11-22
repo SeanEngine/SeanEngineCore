@@ -9,7 +9,7 @@
 #include<cuda_runtime.h>
 #include <curand_kernel.h>
 #include <ctime>
-
+#include <mma.h>
 
 static const dim3 CUDA_BLOCK_SIZE = dim3(16, 16);
 static const int TILE_SIZE = 16;

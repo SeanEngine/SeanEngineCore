@@ -3,27 +3,3 @@
 //
 
 #include "Model.cuh"
-
-void Model::loadData() {
-
-}
-
-void Model::loadDataSet() {
-
-}
-
-void Model::train() {
-
-}
-
-void Model::unloadData() {
-
-}
-
-void Model::execute() {
-
-}
-
-void Model::loadModel() {
-
-}

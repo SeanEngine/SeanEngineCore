@@ -9,9 +9,9 @@ __global__ void genMat(Matrix::Matrix2d* target, unsigned char* buffer){
     int row = threadIdx.y + blockIdx.y * blockDim.y;
     int col = threadIdx.x + blockIdx.x * blockDim.x;
     int index = (row*target->colcount) + col;
-    unsigned char r = buffer[54 + index*4];
-    unsigned char g = buffer[54 + index*4+1];
-    unsigned char b = buffer[54 + index*4+2];
+    unsigned char r = buffer[54 + index*3];
+    unsigned char g = buffer[54 + index*3+1];
+    unsigned char b = buffer[54 + index*3+2];
     target->set(row, col, static_cast<float>((int)r+(int)g+(int)b) / (256.0F * 3.0F));
 }
 
@@ -58,6 +58,7 @@ void Reader::readBMPFiles(int fileCount, string *fileNames, int size, unsigned c
                                     vector<Matrix::Matrix2d *>* output, vector<Matrix::Matrix2d *>* outputBuf,
                                     Status status, int offset) {
     buffer = readBytes(fileCount, fileNames + offset, size, buffer);
+
     vector<void*> params;
     params.push_back(&size);
     params.push_back(buffer);
@@ -69,4 +70,5 @@ void Reader::readBMPFiles(int fileCount, string *fileNames, int size, unsigned c
         case READ_RGB:break;
         case READ_GRAY:__allocSynced(dim3i(fileCount, 1), BMPProc, &params);break;
     }
+
 }
