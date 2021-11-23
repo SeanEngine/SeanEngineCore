@@ -9,6 +9,7 @@
 #include <vector>
 #include <string>
 #include <cstdio>
+#include "../layers/Layer.cuh"
 #include <io.h>
 
 using namespace std;
@@ -21,13 +22,16 @@ public:
     };
     struct Config cfg{};
 
+    vector<Layer*> layers;
+    Layer* correctOut;
     vector<Matrix::Matrix2d*> dataset;
     vector<Matrix::Matrix2d*> labelSet;
 
-    void loadDataSet() override;
-    void execute() override;
-    void loadData() override;
+    void registerModel() override;
     void loadModel() override;
+    void loadDataSet() override;
+    void loadData() override;
+    void run() override;
     void train() override;
     void unloadData() override;
 };

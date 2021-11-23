@@ -45,6 +45,18 @@ static void logInfo(const char * info){
     printf("%s | I >>> %s \n", logHeader().c_str(), info);
 }
 
+static void logInfo(const string& info, int color){
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    SetConsoleTextAttribute(hConsole, color);
+    printf("%s | I >>> %s \n", logHeader().c_str(), info.c_str());
+}
+
+static void logInfo(const char * info, int color){
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    SetConsoleTextAttribute(hConsole, color);
+    printf("%s | I >>> %s \n", logHeader().c_str(), info);
+}
+
 static void logErr(const string& error){
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
     SetConsoleTextAttribute(hConsole, 0x04);

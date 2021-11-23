@@ -15,7 +15,9 @@ using namespace std;
 
 int main(int argc, char **argv) {
 
-     auto* model = new DenseMLP();
-     model->loadDataSet();
-     Matrix::inspect(model->dataset[20000]);
+    auto *model = new DenseMLP();
+    model->registerModel();
+    model->loadModel();
+    model->loadDataSet();
+    Matrix::inspect(model->dataset[20000]);
 }

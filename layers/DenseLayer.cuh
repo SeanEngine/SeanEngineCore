@@ -10,15 +10,16 @@
 #include "string"
 
 using namespace std;
-class DenseLayer : Layer{
+class DenseLayer : public Layer{
 public:
-     Matrix::Matrix2d* weights, *biases, *z, *errors;
-     Matrix::Matrix2d* weightBuffer, *prevActivationBuffer;
-     Matrix::Matrix2d* weightDerivatives, *biasDerivatives;
+     Matrix::Matrix2d* weights{}, *biases{}, *z{}, *errors{};
+     Matrix::Matrix2d* weightBuffer{}, *prevActivationBuffer{};
+     Matrix::Matrix2d* weightDerivatives{}, *biasDerivatives{};
      int NODE_NUMBER, PREV_NODE_NUMBER, NEXT_NODE_NUMBER;
      string getType() override;
 
-     DenseLayer(int NODE_NUMBER, int PREV_NODE_NUMBER, int NEXT_NODE_NUMBER, int LayerID){
+     DenseLayer(int nodeNumber, int NODE_NUMBER, int PREV_NODE_NUMBER, int NEXT_NODE_NUMBER, int LayerID)
+             : Layer(nodeNumber) {
          this->NODE_NUMBER = NODE_NUMBER;
          this->PREV_NODE_NUMBER = PREV_NODE_NUMBER;
          this->NEXT_NODE_NUMBER = NODE_NUMBER;

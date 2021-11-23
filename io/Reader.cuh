@@ -16,6 +16,8 @@ public:
          READ_RGB = 0,
          READ_GRAY = 1
      };
+     static vector<string> getDirFiles(const string& path0);
+
      //read normal files in batch
      static unsigned char* readBytes(int fileCount, string* fileNames, int size, unsigned char* buffer);
 

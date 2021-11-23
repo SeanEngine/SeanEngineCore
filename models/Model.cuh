@@ -8,6 +8,9 @@
 
 class Model {
 public:
+    //register model
+    virtual void registerModel() = 0;
+
     //load model
     virtual void loadModel() = 0;
 
@@ -24,7 +27,7 @@ public:
     virtual void train() = 0;
 
     //run the model
-    virtual void execute() = 0;
+    virtual void run() = 0;
 };
 
 

@@ -20,6 +20,8 @@ public:
         char* MODEL_SAVE_PATH;
         char* TRAIN_DATA_PATH = "C:\\Users\\DanielSun\\Desktop\\resources\\mnist\\decompress_mnist\\train";
         char* TRAIN_LABEL_PATH;
+
+        bool LOAD_MODEL_FROM_SAV = false;
     };
 
     EngineConfig config;

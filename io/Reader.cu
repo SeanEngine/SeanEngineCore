@@ -5,6 +5,7 @@
 #include "Reader.cuh"
 #include <cassert>
 #include <iostream>
+#include <io.h>
 #include "../utils/logger.cuh"
 
 __global__ void genMat(Matrix::Matrix2d* target, unsigned char* buffer){
@@ -86,5 +87,18 @@ void Reader::readBMPFiles(int threads, string *fileNames, int size, unsigned cha
         case READ_RGB:break;
         case READ_GRAY:__allocSynced(dim3i(threads, 1), BMPProc, &params);break;
     }
+}
 
+vector<string> Reader::getDirFiles(const string& path0) {
+    intptr_t hFile = 0;
+    struct _finddata_t fileInfo{};
+    string p;
+    vector<string> temp;
+
+    if ((hFile = _findfirst(p.assign(path0).append("\\*").c_str(), &fileInfo)) != -1){
+        while (_findnext(hFile, &fileInfo) == 0){
+            temp.push_back(p.assign(path0).append("\\").append(fileInfo.name));
+        }
+    }
+    return temp;
 }

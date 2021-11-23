@@ -11,3 +11,11 @@ string Layer::getType() {
 void Layer::activate(Layer *prevLayer) {
     copyD2D(prevLayer->nodes, this->nodes);
 }
+
+void Layer::propagate(Layer *prev, Layer *next) {
+
+}
+
+void Layer::learn(int BATCH_SIZE, float LEARNING_RATE) {
+
+}
