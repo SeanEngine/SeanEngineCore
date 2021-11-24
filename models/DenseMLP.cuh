@@ -17,13 +17,15 @@ class DenseMLP : Model{
 public:
     struct Config : Engine::EngineConfig{
         int BMP_READ_SIZE = 2390;
-        int BMP_READ_DIM = 28;
+        int INPUT_SIZE_X = 28;
         int OUTPUT_SIZE = 10;
     };
     struct Config cfg{};
 
     vector<Layer*> layers;
     Layer* correctOut;
+    vector<Matrix::Matrix2d*> dataBatch;
+    vector<Matrix::Matrix2d*> labelBatch;
     vector<Matrix::Matrix2d*> dataset;
     vector<Matrix::Matrix2d*> labelSet;
 
@@ -33,7 +35,6 @@ public:
     void loadData() override;
     void run() override;
     void train() override;
-    void unloadData() override;
 };
 
 

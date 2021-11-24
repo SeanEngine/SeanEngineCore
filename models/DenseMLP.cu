@@ -7,6 +7,7 @@
 #include "../utils/logger.cuh"
 #include "../utils/Matrix.cuh"
 #include "../layers/DenseLayer.cuh"
+#include <random>
 
 int readDataset(const string& path0, vector<Matrix::Matrix2d*>* data, vector<Matrix::Matrix2d*>* label,
                  DenseMLP::Config cfg, int labelIndex, int count) {
@@ -29,14 +30,14 @@ int readDataset(const string& path0, vector<Matrix::Matrix2d*>* data, vector<Mat
 
         Matrix::Matrix2d* matData;
         cudaMallocHost(&matData,sizeof(Matrix::Matrix2d));
-        Matrix::callAllocElementH(matData, cfg.BMP_READ_DIM,cfg.BMP_READ_DIM);
+        Matrix::callAllocElementH(matData, cfg.INPUT_SIZE_X, cfg.INPUT_SIZE_X);
         Matrix::Matrix2d* matLabel;
 
         cudaMallocHost(&matLabel,sizeof(Matrix::Matrix2d));
         Matrix::callAllocElementH(matLabel, cfg.OUTPUT_SIZE,1);
         Matrix::callAllocZero(matLabel);
-
         matLabel->elements[labelIndex] = 1.0f;
+
         (*label).push_back(matLabel);
         (*data).push_back(matData);
     }
@@ -44,7 +45,7 @@ int readDataset(const string& path0, vector<Matrix::Matrix2d*>* data, vector<Mat
     for (int i=0;i< cfg.CPU_THREADS;i++) {
         Matrix::Matrix2d* matT;
         cudaMallocHost(&matT,sizeof(Matrix::Matrix2d));
-        Matrix::callAllocElementD(matT, cfg.BMP_READ_DIM,cfg.BMP_READ_DIM);
+        Matrix::callAllocElementD(matT, cfg.INPUT_SIZE_X, cfg.INPUT_SIZE_X);
         buf.push_back(matT);
     }
     int index = 0;
@@ -93,6 +94,16 @@ void DenseMLP::loadDataSet() {
      for(int i=0; i< 10; i++){
          count += readDataset(path0 + "\\" + to_string(i), &dataset, &labelSet, cfg, i, count);
      }
+
+    for (int i=0; i< cfg.TRAIN_BATCH_SIZE; i++){
+        Matrix::Matrix2d* data, *label;
+        cudaMallocHost((void**)&data, sizeof(Matrix::Matrix2d));
+        cudaMallocHost((void**)&label, sizeof(Matrix::Matrix2d));
+        Matrix::callAllocElementD(data, cfg.INPUT_SIZE_X, cfg.INPUT_SIZE_X);
+        dataBatch.push_back(data);
+        Matrix::callAllocElementD(label, cfg.OUTPUT_SIZE,1);
+        labelBatch.push_back(label);
+    }
 }
 
 void DenseMLP::run() {
@@ -100,13 +111,18 @@ void DenseMLP::run() {
 }
 
 void DenseMLP::loadData() {
-
+    random_device rd;
+    default_random_engine gen = default_random_engine(rd());
+    uniform_int_distribution<int> dis(0,(int)dataset.size());
+    cout<<dataset.size()<<endl;
+    for(int i=0; i<cfg.TRAIN_BATCH_SIZE; i++){
+        int index = dis(gen);
+        cout<<index<<" ";
+        copyH2D(dataset[index], dataBatch[i]);
+        copyH2D(labelSet[index], labelBatch[i]);
+    }
 }
 
 void DenseMLP::train() {
-
-}
-
-void DenseMLP::unloadData() {
 
 }

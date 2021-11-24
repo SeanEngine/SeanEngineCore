@@ -51,6 +51,8 @@ public:
     static void callAllocRandom(Matrix2d *mat1);
     static void callAllocZero(Matrix2d *mat1);
     static Matrix2d* callCopyD2D(Matrix2d *src, Matrix2d *dist);
+    static Matrix2d* callCopyD2H(Matrix2d *src, Matrix2d* dist);
+    static Matrix2d* callCopyH2D(Matrix2d *src, Matrix2d* dist);
 
     //method callings
     static Matrix2d* callCross(Matrix2d* mat1, Matrix2d* mat2, Matrix2d* result);
@@ -99,6 +101,14 @@ static Matrix::Matrix2d* sigmoidD(Matrix::Matrix2d* mat1, Matrix::Matrix2d* resu
 
 static Matrix::Matrix2d* copyD2D(Matrix::Matrix2d* src, Matrix::Matrix2d* dist){
     return Matrix::callCopyD2D(src, dist);
+}
+
+static Matrix::Matrix2d* copyD2H(Matrix::Matrix2d* src, Matrix::Matrix2d* dist){
+    return Matrix::callCopyD2H(src,dist);
+}
+
+static Matrix::Matrix2d* copyH2D(Matrix::Matrix2d* src, Matrix::Matrix2d* dist){
+    return Matrix::callCopyH2D(src,dist);
 }
 
 static void sum(Matrix::Matrix2d* mat1, float* result){

@@ -20,9 +20,6 @@ public:
     //load the data batch from dataset (host memory to device memory)
     virtual void loadData() = 0;
 
-    //unload the data
-    virtual void unloadData() = 0;
-
     //train a batch on the model
     virtual void train() = 0;
 

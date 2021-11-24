@@ -7,6 +7,7 @@
 #include "cublas_v2.h"
 #include "execution/ThreadControls.h"
 #include "models/DenseMLP.cuh"
+#include "layers/DenseLayer.cuh"
 
 #pragma comment(lib, "cublas.lib")
 
@@ -19,5 +20,8 @@ int main(int argc, char **argv) {
     model->registerModel();
     model->loadModel();
     model->loadDataSet();
-    Matrix::inspect(model->dataset[20000]);
+    model->loadData();
+    Matrix::inspect(model->dataBatch[0]);
+    Matrix::inspect(model->labelBatch[0]);
+
 }
