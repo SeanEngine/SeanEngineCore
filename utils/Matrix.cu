@@ -54,6 +54,13 @@ __global__ void allocZero(Matrix::Matrix2d *mat1) {
     mat1->set(row, col, 0.0F);
 }
 
+__global__ void allocConst(Matrix::Matrix2d *mat1, float in) {
+    int row = static_cast<int>(threadIdx.y + blockIdx.y * blockDim.y);
+    int col = static_cast<int>(threadIdx.x + blockIdx.x * blockDim.x);
+    mat1->set(row, col, in);
+}
+
+
 __global__ void crossP(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2, Matrix::Matrix2d *result) {
     float currentValue = 0.0;
     int row = static_cast<int>(threadIdx.y + blockIdx.y * blockDim.y);
@@ -368,21 +375,28 @@ void Matrix::callAllocZero(Matrix::Matrix2d *mat1) {
     allocZero<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1);
     cudaDeviceSynchronize();
 }
+void Matrix::callAllocConst(Matrix::Matrix2d *mat1, float in) {
+    dim3 gridSize = dim3((mat1->colcount + CUDA_BLOCK_SIZE.x - 1) / CUDA_BLOCK_SIZE.x,
+                         (mat1->rowcount + CUDA_BLOCK_SIZE.y - 1) / CUDA_BLOCK_SIZE.y);
+    allocConst<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1, in);
+    cudaDeviceSynchronize();
+}
+
 
 Matrix::Matrix2d *Matrix::callCopyD2D(Matrix::Matrix2d *src, Matrix::Matrix2d *dist) {
-    assert(src->rowcount == dist->rowcount && src->colcount == dist->colcount);
+    assert(src->rowcount * src->colcount == dist->rowcount * dist->colcount);
     cudaMemcpy(dist->elements, src->elements, sizeof(float) * src->rowcount * src->colcount, cudaMemcpyDeviceToDevice);
     return dist;
 }
 
 Matrix::Matrix2d *Matrix::callCopyD2H(Matrix::Matrix2d *src, Matrix::Matrix2d *dist) {
-    assert(src->rowcount == dist->rowcount && src->colcount == dist->colcount);
+    assert(src->rowcount * src->colcount == dist->colcount * dist->rowcount);
     cudaMemcpy(dist->elements, src->elements, sizeof(float) * src->rowcount * src->colcount, cudaMemcpyDeviceToHost);
     return dist;
 }
 
 Matrix::Matrix2d *Matrix::callCopyH2D(Matrix::Matrix2d *src, Matrix::Matrix2d *dist) {
-    assert(src->rowcount == dist->rowcount && src->colcount == dist->colcount);
+    assert(src->rowcount * src->colcount == dist->colcount * dist->rowcount);
     cudaMemcpy(dist->elements, src->elements, sizeof(float) * src->rowcount * src->colcount, cudaMemcpyHostToDevice);
     return dist;
 }
@@ -518,13 +532,13 @@ Matrix::Matrix2d *Matrix::callTranspose(Matrix::Matrix2d *mat1, Matrix::Matrix2d
 //debug tools
 void Matrix::inspect(Matrix2d *mat1) {
     Matrix::Matrix2d *debug;
-    cudaMallocHost(reinterpret_cast<void **>(&debug), sizeof(Matrix::Matrix2d));
+    cudaGetErrorString(cudaMallocHost((void**)&debug, sizeof(Matrix::Matrix2d)));
     callAllocElementH(debug, mat1->rowcount, mat1->colcount);
     cudaMemcpy(debug->elements, mat1->elements, sizeof(float) * debug->colcount * debug->rowcount,
                cudaMemcpyDeviceToHost);
     for (int i = 0; i < debug->rowcount; i++) {
         for (int j = 0; j < debug->colcount; j++) {
-            std::cout << (*(debug->elements + i * debug->colcount + j) > 0 ? 1 : 0) << " ";
+            std::cout << (*(debug->elements + i * debug->colcount + j)) << " ";
         }
         std::cout << std::endl;
     }

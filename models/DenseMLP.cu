@@ -11,8 +11,6 @@
 
 int readDataset(const string& path0, vector<Matrix::Matrix2d*>* data, vector<Matrix::Matrix2d*>* label,
                  DenseMLP::Config cfg, int labelIndex, int count) {
-    intptr_t hFile = 0;
-    struct _finddata_t fileInfo{};
     string* paths;
     vector<Matrix::Matrix2d *> buf;
     unsigned char* buffer;
@@ -64,11 +62,13 @@ int readDataset(const string& path0, vector<Matrix::Matrix2d*>* data, vector<Mat
 }
 
 void DenseMLP::registerModel() {
+     cudaMallocHost((void**)&costBuffer, sizeof(Matrix::Matrix2d));
+     Matrix::callAllocElementD(costBuffer, cfg.OUTPUT_SIZE, 1);
      logInfo("===========< REGISTERING : DenseMLP >============",0x05);
      layers.push_back(new Layer(784));  //input layer
-     layers.push_back(new DenseLayer(0, 16, 784, 16, 1));
-     layers.push_back(new DenseLayer(0, 16, 16, 10, 2));
-     layers.push_back(new DenseLayer(0, 10, 16, 10, 3));
+     layers.push_back(new DenseLayer(16, 784, 16, 1));
+     layers.push_back(new DenseLayer(16, 16, 10, 2));
+     layers.push_back(new DenseLayer(10, 16, 10, 3));
 }
 
 
@@ -99,7 +99,7 @@ void DenseMLP::loadDataSet() {
         Matrix::Matrix2d* data, *label;
         cudaMallocHost((void**)&data, sizeof(Matrix::Matrix2d));
         cudaMallocHost((void**)&label, sizeof(Matrix::Matrix2d));
-        Matrix::callAllocElementD(data, cfg.INPUT_SIZE_X, cfg.INPUT_SIZE_X);
+        Matrix::callAllocElementD(data, cfg.INPUT_SIZE_X* cfg.INPUT_SIZE_X, 1);
         dataBatch.push_back(data);
         Matrix::callAllocElementD(label, cfg.OUTPUT_SIZE,1);
         labelBatch.push_back(label);
@@ -113,16 +113,51 @@ void DenseMLP::run() {
 void DenseMLP::loadData() {
     random_device rd;
     default_random_engine gen = default_random_engine(rd());
-    uniform_int_distribution<int> dis(0,(int)dataset.size());
-    cout<<dataset.size()<<endl;
+    uniform_int_distribution<int> dis(0,(int)dataset.size()-1);
     for(int i=0; i<cfg.TRAIN_BATCH_SIZE; i++){
         int index = dis(gen);
-        cout<<index<<" ";
         copyH2D(dataset[index], dataBatch[i]);
         copyH2D(labelSet[index], labelBatch[i]);
     }
 }
 
 void DenseMLP::train() {
+    int success=0;
+    pastCost=0;
+    for (int trial = 0; trial < cfg.TRAIN_BATCH_SIZE; trial++) {
+        layers[0]->nodes = flattern(dataBatch[trial]);
+        for (int i = 1; i < layers.size(); i++) {
+            layers[i]->activate(layers[i - 1]);
+        }
 
+        costBuffer = *(*(*copyD2D(layers[layers.size()-1]->nodes, costBuffer) - labelBatch[trial])^2)*0.5;
+        float cost = sumC(costBuffer);
+        correctOut->nodes = labelBatch[trial];
+        pastCost += cost;
+
+        int maxIndex1 = 0, maxIndex2 = 0;
+        Matrix::Matrix2d* debug;
+        cudaMallocHost((void**)&debug, sizeof(Matrix::Matrix2d));
+        Matrix::callAllocElementH(debug, DenseMLP::cfg.OUTPUT_SIZE, 1);
+        cudaMemcpy(debug->elements, layers[3]->nodes->elements, sizeof(float) * cfg.OUTPUT_SIZE, cudaMemcpyDeviceToHost);
+        for(int i=0; i< cfg.OUTPUT_SIZE; i++) {
+            maxIndex1 = *(debug->elements + i) > *(debug->elements + maxIndex1) ? i : maxIndex1;
+        }
+        cudaMemcpy(debug->elements, correctOut->nodes->elements, sizeof(float) * cfg.OUTPUT_SIZE, cudaMemcpyDeviceToHost);
+        for(int i=0; i< cfg.OUTPUT_SIZE; i++){
+            maxIndex2 = *(debug->elements + i) > *(debug->elements + maxIndex2) ? i: maxIndex2;
+        }
+        success = maxIndex1 == maxIndex2 ? success+1 : success;
+
+        for (int i = (int)layers.size()-1; i > 0; i--) {
+            layers[i]->propagate(layers[i - 1],i+1 < layers.size()? layers[i+1] : correctOut);
+        }
+        cudaFreeHost(debug->elements);
+        cudaFreeHost(debug);
+    }
+    for (int i = (int)layers.size()-1; i > 0; i--) {
+        layers[i]->learn(cfg.TRAIN_BATCH_SIZE, cfg.LEARNING_RATE);
+    }
+    logInfo("Batch trained with cost: " + to_string(pastCost/(float)cfg.TRAIN_BATCH_SIZE) +
+    " success rate: " + to_string(success));
 }

@@ -18,11 +18,11 @@ public:
      int NODE_NUMBER, PREV_NODE_NUMBER, NEXT_NODE_NUMBER;
      string getType() override;
 
-     DenseLayer(int nodeNumber, int NODE_NUMBER, int PREV_NODE_NUMBER, int NEXT_NODE_NUMBER, int LayerID)
-             : Layer(nodeNumber) {
+     DenseLayer( int NODE_NUMBER, int PREV_NODE_NUMBER, int NEXT_NODE_NUMBER, int LayerID)
+             : Layer(NODE_NUMBER) {
          this->NODE_NUMBER = NODE_NUMBER;
          this->PREV_NODE_NUMBER = PREV_NODE_NUMBER;
-         this->NEXT_NODE_NUMBER = NODE_NUMBER;
+         this->NEXT_NODE_NUMBER = NEXT_NODE_NUMBER;
          this->id = LayerID;
 
          //allocate matrix callers
@@ -56,10 +56,10 @@ public:
      void calcActivate(Matrix::Matrix2d* prevNodes);
 
      //calculate the errors as output layer
-     void reflectOutput(Matrix::Matrix2d* correctOut);
+     void propagatingOutput(Matrix::Matrix2d* correctOut);
 
      //calculate the errors
-     void reflect(Matrix::Matrix2d* nextWeights, Matrix::Matrix2d *nextErrors);
+     void propagate(Matrix::Matrix2d* nextWeights, Matrix::Matrix2d *nextErrors);
 
      //update the memories of weight derivatives
      void recWeights(Matrix::Matrix2d* prevActivations);

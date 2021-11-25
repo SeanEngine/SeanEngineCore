@@ -1,24 +1,21 @@
 //
-// Created by DanielSun on 11/22/2021.
+// Created by DanielSun on 11/25/2021.
 //
 
-#ifndef CUDANNGEN2_DENSEMLP_CUH
-#define CUDANNGEN2_DENSEMLP_CUH
+#ifndef CUDANNGEN2_TESTMODEL_CUH
+#define CUDANNGEN2_TESTMODEL_CUH
+
+
 #include "Model.cuh"
 #include "../utils/Matrix.cuh"
-#include <vector>
-#include <string>
-#include <cstdio>
 #include "../layers/Layer.cuh"
-#include <io.h>
+#include "vector"
 
-using namespace std;
-class DenseMLP : Model{
+class TestModel : Model{
 public:
     struct Config : Engine::EngineConfig{
-        int BMP_READ_SIZE = 2390;
-        int INPUT_SIZE_X = 28;
-        int OUTPUT_SIZE = 10;
+        int INPUT_SIZE = 3;
+        int OUTPUT_SIZE = 2;
     };
     struct Config cfg{};
     Matrix::Matrix2d* costBuffer;
@@ -28,16 +25,19 @@ public:
     Layer* correctOut = new Layer(cfg.OUTPUT_SIZE);
     vector<Matrix::Matrix2d*> dataBatch;
     vector<Matrix::Matrix2d*> labelBatch;
-    vector<Matrix::Matrix2d*> dataset;
-    vector<Matrix::Matrix2d*> labelSet;
 
     void registerModel() override;
+
     void loadModel() override;
+
     void loadDataSet() override;
+
     void loadData() override;
-    void run() override;
+
     void train() override;
+
+    void run() override;
 };
 
 
-#endif //CUDANNGEN2_DENSEMLP_CUH
+#endif //CUDANNGEN2_TESTMODEL_CUH

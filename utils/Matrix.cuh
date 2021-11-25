@@ -10,6 +10,7 @@
 #include <curand_kernel.h>
 #include <ctime>
 #include <mma.h>
+#include <cassert>
 
 static const dim3 CUDA_BLOCK_SIZE = dim3(16, 16);
 static const int TILE_SIZE = 16;
@@ -50,6 +51,7 @@ public:
     static void callAllocElementD(Matrix2d *mat1, int row, int col);
     static void callAllocRandom(Matrix2d *mat1);
     static void callAllocZero(Matrix2d *mat1);
+    static void callAllocConst(Matrix2d *mat1, float in);
     static Matrix2d* callCopyD2D(Matrix2d *src, Matrix2d *dist);
     static Matrix2d* callCopyD2H(Matrix2d *src, Matrix2d* dist);
     static Matrix2d* callCopyH2D(Matrix2d *src, Matrix2d* dist);
@@ -111,8 +113,37 @@ static Matrix::Matrix2d* copyH2D(Matrix::Matrix2d* src, Matrix::Matrix2d* dist){
     return Matrix::callCopyH2D(src,dist);
 }
 
-static void sum(Matrix::Matrix2d* mat1, float* result){
-    Matrix::callSum(mat1, result);
+static float sum(Matrix::Matrix2d* mat1){
+    float* onDevice, *onHost;
+    cudaMalloc((void**)&onDevice, sizeof(float));
+    cudaMallocHost((void**)&onHost, sizeof(float));
+    assert(onDevice!=nullptr && onHost != nullptr);
+    Matrix::callSum(mat1, onDevice);
+    cudaMemcpy(onHost, onDevice, sizeof(float), cudaMemcpyDeviceToHost);
+    cudaFree(onDevice);
+    float out = *onHost;
+    cudaFree(onHost);
+    return out;
+}
+
+static float sumC(Matrix::Matrix2d* mat1){
+    float sum = 0;
+    Matrix::Matrix2d* host;
+    cudaMallocHost((void**)&host, sizeof(Matrix::Matrix2d));
+    Matrix::callAllocElementH(host, mat1->rowcount, mat1->colcount);
+    copyH2D(mat1,host);
+    for (int i=0; i<mat1->rowcount* mat1->colcount; i++){
+        sum+=host->elements[i];
+    }
+    cudaFreeHost(host->elements);
+    cudaFreeHost(host);
+    return sum;
+}
+
+static Matrix::Matrix2d* flattern(Matrix::Matrix2d* in){
+    in->rowcount*= in->colcount;
+    in->colcount = 1;
+    return in;
 }
 
 #endif //CUDANNGEN2_MATRIX_CUH
