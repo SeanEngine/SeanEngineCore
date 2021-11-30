@@ -31,7 +31,7 @@ struct dim3i{
 /**
  * How this works:
  *     This system is designed to control cpu threads in the cuda fashion.
- *     In the arguments, the last 2 args are reserved for execution control, which are
+ *     In the arguments, the last 3 args are reserved for execution control, which are
  *     execution flags (int*), blockSize (dim3i) and threadIdx (dim3i). Thus, the actual argNum sending to
  *     each thread need to be 3 + your argNum, you should be aware of this while setting
  *     up your methods.
