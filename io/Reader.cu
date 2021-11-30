@@ -49,10 +49,7 @@ void readFunc(vector<void*>* args, dim3i blockSize, dim3i threadId, int* executi
 }
 
 unsigned char *Reader::readBytes(int fileCount, string* fileNames, int size, unsigned char* buffer) {
-    vector<void*> params;
-    params.push_back(buffer);
-    params.push_back(fileNames);
-    params.push_back(&size);
+    vector<void*> params = __pack(3,buffer,fileNames,&size);
     __allocSynced(dim3i(fileCount,1),readFunc, &params);
     return buffer;
 }
@@ -75,14 +72,7 @@ void Reader::readBMPFiles(int threads, string *fileNames, int size, unsigned cha
                           Status status, int offset, int offsetVec) {
     buffer = readBytes(threads, fileNames + offset, size, buffer);
 
-    vector<void*> params;
-    params.push_back(&size);
-    params.push_back(buffer);
-    params.push_back(bufCuda);
-    params.push_back(dataset);
-    params.push_back(outputBuf);
-    params.push_back(&offset);
-    params.push_back(&offsetVec);
+    vector<void*> params = __pack(7, &size, buffer, bufCuda, dataset, outputBuf, &offset, &offsetVec);
     switch (status) {
         case READ_RGB:break;
         case READ_GRAY:__allocSynced(dim3i(threads, 1), BMPProc, &params);break;

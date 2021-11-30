@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 #include <thread>
+#include <cstdarg>
 
 using namespace std;
 struct dim3i{
@@ -67,6 +68,17 @@ static void __allocSynced(dim3i blockSize, void (*function)(vector<void*>*, dim3
 
 static void __syncThreads(dim3i threadId, dim3i blockSize, int *executionFlags){
     ThreadControls::_syncThreads(threadId, blockSize, executionFlags);
+}
+
+// group the args
+static vector<void*> __pack(int argc, void* ...){
+    vector<void*> out;
+    va_list c_arg{};
+    va_start(c_arg, argc);
+    out.reserve(argc);
+    for (int i= 0; i < argc; i++) out.push_back(va_arg(c_arg, void*));
+    va_end(c_arg);
+    return out;
 }
 
 
