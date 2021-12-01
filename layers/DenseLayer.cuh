@@ -16,6 +16,7 @@ public:
      Matrix::Matrix2d* weightBuffer{}, *prevActivationBuffer{};
      Matrix::Matrix2d* weightDerivatives{}, *biasDerivatives{};
      int NODE_NUMBER, PREV_NODE_NUMBER, NEXT_NODE_NUMBER;
+     float WEIGHT_DECAY = 1.0f;
      string getType() override;
 
      DenseLayer( int NODE_NUMBER, int PREV_NODE_NUMBER, int NEXT_NODE_NUMBER, int LayerID)

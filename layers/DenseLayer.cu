@@ -35,7 +35,7 @@ void DenseLayer::recBias() {
 }
 
 void DenseLayer::applyWeights(int BATCH_SIZE, float LEARNING_RATE) {
-    weights = *weights - (*(*weightDerivatives * (1.0F/(float)BATCH_SIZE)) * LEARNING_RATE);
+    weights = *(*weights * WEIGHT_DECAY) - (*(*weightDerivatives * (1.0F/(float)BATCH_SIZE)) * LEARNING_RATE);
 }
 
 void DenseLayer::applyBias(int BATCH_SIZE, float LEARNING_RATE) {
