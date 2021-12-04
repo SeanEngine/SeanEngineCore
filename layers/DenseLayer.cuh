@@ -68,6 +68,8 @@ public:
      //update the memories of bias derivatives
      void recBias();
 
+     float calcQuadraticCost(Matrix::Matrix2d *correctOut);
+
      //apply the changes:
      void applyWeights(int BATCH_SIZE, float LEARNING_RATE);
      void applyBias(int BATCH_SIZE, float LEARNING_RATE);

@@ -27,6 +27,7 @@ public:
         //operator definitions
         Matrix2d* operator+(Matrix2d* mat2);
         Matrix2d* operator+=(Matrix2d* mat2);
+        Matrix2d* operator+=(float con);
         Matrix2d* operator+(float con);
         Matrix2d* operator-(Matrix2d* mat2);
         Matrix2d* operator-(float con);
@@ -38,6 +39,10 @@ public:
         __device__ float get(int row, int col) const  ;
         __device__ void set(int row, int col, float value) const ;
         __device__ void add(int row, int col, float value) const ;
+
+        __host__ void setH2D(int row, int col, float value);
+        __host__ void setH2D(int offset, float value);
+        __host__ float getH2D(int row, int col) const;
     };
 
     //faster calculation methods
@@ -64,6 +69,9 @@ public:
     static Matrix2d* callCrossPOLD(Matrix2d* mat1, Matrix2d* mat2, Matrix2d* result);
     static Matrix2d* callTranspose(Matrix2d* mat1, Matrix2d* result);
     static void callSum(Matrix2d *mat1, float* sumBuffer);
+
+    //edit element in batches
+    static Matrix2d* callInsertCol(Matrix2d* mat1, Matrix2d* column, int colIndex);
 
     //operator methods and normal operations
     static Matrix2d* callHadmardP(Matrix2d* mat1, Matrix2d* mat2);
@@ -111,6 +119,10 @@ static Matrix::Matrix2d* copyD2H(Matrix::Matrix2d* src, Matrix::Matrix2d* dist){
 
 static Matrix::Matrix2d* copyH2D(Matrix::Matrix2d* src, Matrix::Matrix2d* dist){
     return Matrix::callCopyH2D(src,dist);
+}
+
+static Matrix::Matrix2d* insertCol(Matrix::Matrix2d* mat1, Matrix::Matrix2d* column, int colIndex){
+    return Matrix::callInsertCol(mat1, column, colIndex);
 }
 
 static float sum(Matrix::Matrix2d* mat1){

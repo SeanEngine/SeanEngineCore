@@ -8,7 +8,7 @@
 #include "execution/ThreadControls.h"
 #include "models/DenseMLP.cuh"
 #include "layers/DenseLayer.cuh"
-#include "models/TestModel.cuh"
+#include "debug_tools/GradientCheck.cuh"
 
 #pragma comment(lib, "cublas.lib")
 
@@ -21,10 +21,19 @@ int main(int argc, char **argv) {
     model->registerModel();
     model->loadModel();
     model->loadDataSet();
+    model->loadData();
+
+    auto* label = new Layer(10);
+    label->nodes = model->labelBatch[0];
+    cout<<gradCheck(model->layers, model->dataBatch[0], label);
+/*
     for(int i=0; i<1000; i++) {
         model->loadData();
         model->train();
     }
-    Matrix::inspect(model->layers[3]->nodes);
+    */
+
+    //Matrix::inspect(model->layers[3]->nodes);
+
 
 }

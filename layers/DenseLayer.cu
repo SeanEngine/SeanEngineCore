@@ -76,3 +76,12 @@ void DenseLayer::learn(int BATCH_SIZE, float LEARNING_RATE) {
     Matrix::callAllocZero(weightDerivatives);
     Matrix::callAllocZero(biasDerivatives);
 }
+
+float DenseLayer::calcQuadraticCost(Matrix::Matrix2d *correctOut) {
+    float ret=0;
+    for(int i=0; i<nodes->rowcount; i++){
+        ret += 0.5f * (float)pow(nodes->getH2D(i,0) - correctOut->getH2D(i,0),2);
+    }
+    return ret;
+}
+

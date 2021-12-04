@@ -29,6 +29,14 @@ __device__ void Matrix::Matrix2d::add(int row, int col, float value) const {
         this->elements[row * this->colcount + col] += value;
 }
 
+__global__ void setVal(Matrix::Matrix2d* mat1, int row, int col, float value) {
+    mat1->set(row, col, value);
+}
+
+__global__ void setVal(Matrix::Matrix2d* mat1, int offset, float value) {
+    mat1->elements[offset] = value;
+}
+
 __device__ float Matrix::fasterSqrt(float in) {
     float half = 0.5f * in;
     int i = *(int *) &in;
@@ -313,7 +321,7 @@ __global__ void power(Matrix::Matrix2d *mat1, float con) {
 __global__ void transposeOperation(Matrix::Matrix2d *mat1, Matrix::Matrix2d *result) {
     int row = blockIdx.y * blockDim.y + threadIdx.y;
     int col = blockIdx.x * blockDim.x + threadIdx.x;
-    result->set(row, col, mat1->get(col, row));
+    result->set(col, row, mat1->get(row, col));
 }
 
 __global__ void sigmoidActivation(Matrix::Matrix2d *mat1) {
@@ -339,6 +347,11 @@ __global__ void sigmoidDerivative(Matrix::Matrix2d *mat1, Matrix::Matrix2d *resu
     int col = blockIdx.x * blockDim.x + threadIdx.x;
     float x = mat1->get(row, col);
     result->set(row, col, sigmoidCalc(x) * (1.0f - sigmoidCalc(x)));
+}
+
+__global__ void insertColumn(Matrix::Matrix2d *mat1, Matrix::Matrix2d *column, int colIndex){
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    mat1->set(index, colIndex, column->get(index,0));
 }
 
 //memory Control:
@@ -589,6 +602,15 @@ void reduce(float *input, float *output, int size) {
 
 void Matrix::callSum(Matrix::Matrix2d *mat1, float *sumBuffer) {
     reduce(mat1->elements, sumBuffer, mat1->colcount * mat1->rowcount);
+};
+
+//batch operation
+Matrix::Matrix2d *Matrix::callInsertCol(Matrix::Matrix2d *mat1, Matrix::Matrix2d *column, int colIndex) {
+    assert(colIndex < mat1->colcount && column->rowcount == mat1->rowcount);
+    dim3 grid = dim3((column->rowcount + (CUDA_BLOCK_SIZE.x-1))/CUDA_BLOCK_SIZE.x, 1);
+    insertColumn<<<grid, CUDA_BLOCK_SIZE>>>(mat1, column, colIndex);
+    cudaDeviceSynchronize();
+    return  mat1;
 }
 
 //operators
@@ -622,6 +644,31 @@ Matrix::Matrix2d *Matrix::Matrix2d::operator*(Matrix::Matrix2d *mat2) {
 
 Matrix::Matrix2d *Matrix::Matrix2d::operator+=(Matrix::Matrix2d *mat2) {
     return callAddition(this, mat2);
+}
+
+Matrix::Matrix2d *Matrix::Matrix2d::operator+=(float con) {
+    return callAddition(this,con);
+}
+
+void Matrix::Matrix2d::setH2D(int row, int col, float value) {
+    assert(row < this->rowcount && col < this->colcount);
+    setVal<<<1,1>>>(this, row, col, value);
+    cudaDeviceSynchronize();
+}
+
+__host__ void Matrix::Matrix2d::setH2D(int offset, float value) {
+    assert(offset < this->rowcount * this->colcount);
+    setVal<<<1,1>>>(this, offset, value);
+    cudaDeviceSynchronize();
+}
+
+__host__ float Matrix::Matrix2d::getH2D(int row, int col) const {
+    float* temp;
+    cudaMallocHost((void**)&temp, sizeof(float));
+    cudaMemcpy(temp, this->elements + row * this->colcount + col, sizeof(float), cudaMemcpyDeviceToHost);
+    float output = *temp;
+    cudaFreeHost(temp);
+    return output;
 }
 
 
