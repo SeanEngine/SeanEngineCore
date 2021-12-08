@@ -83,12 +83,6 @@ public:
     static Matrix2d* callSubtraction(Matrix2d* mat1, float con);
     static Matrix2d* callPower(Matrix2d* mat1, float con);
 
-    //activation methods
-    static Matrix2d* callActivationSigmoid(Matrix2d* mat1);
-    static Matrix2d* callActivationSigmoid(Matrix2d *mat1, Matrix2d *result);
-    static Matrix2d* callDerivativeSigmoid(Matrix2d *mat1, Matrix2d *result);
-    static Matrix2d* callLeakyReluActivation(Matrix2d *mat1, Matrix2d *result, float ALPHA);
-    static Matrix2d* callLeakyReluDerivative(Matrix2d *mat1, Matrix2d *result, float ALPHA);
 
 };
 
@@ -103,22 +97,6 @@ static Matrix::Matrix2d* crossA(Matrix::Matrix2d* mat1, Matrix::Matrix2d* mat2, 
 
 static Matrix::Matrix2d* transpose(Matrix::Matrix2d* mat1, Matrix::Matrix2d* result){
     return Matrix::callTranspose(mat1, result);
-}
-
-static Matrix::Matrix2d* sigmoid(Matrix::Matrix2d* mat1, Matrix::Matrix2d* result){
-    return Matrix::callActivationSigmoid(mat1, result);
-}
-
-static Matrix::Matrix2d* sigmoidD(Matrix::Matrix2d* mat1, Matrix::Matrix2d* result){
-    return Matrix::callDerivativeSigmoid(mat1, result);
-}
-
-static Matrix::Matrix2d* lRelu(Matrix::Matrix2d* mat1, Matrix::Matrix2d* result){
-    return Matrix::callLeakyReluActivation(mat1, result, RELU_ALPHA);
-}
-
-static Matrix::Matrix2d* lReluD(Matrix::Matrix2d* mat1, Matrix::Matrix2d* result){
-    return Matrix::callLeakyReluDerivative(mat1, result, RELU_ALPHA);
 }
 
 static Matrix::Matrix2d* copyD2D(Matrix::Matrix2d* src, Matrix::Matrix2d* dist){

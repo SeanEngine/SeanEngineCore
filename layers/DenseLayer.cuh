@@ -5,6 +5,7 @@
 #ifndef CUDANNGEN2_DENSELAYER_CUH
 #define CUDANNGEN2_DENSELAYER_CUH
 #include "../utils/Matrix.cuh"
+#include "../utils/NeuralUtils.cuh"
 #include "../utils/logger.cuh"
 #include "Layer.cuh"
 #include "string"
@@ -48,19 +49,19 @@ public:
          Matrix::callAllocElementD(prevActivationBuffer, 1, PREV_NODE_NUMBER);
          Matrix::callAllocElementD(biasDerivatives, NODE_NUMBER, 1);
 
-         logInfo("Layer register complete : " + to_string(id) + " DENSE " + to_string(NODE_NUMBER));
+         logInfo("Layer register complete : " + to_string(id) + " " + getType() + " " + to_string(NODE_NUMBER));
          logInfo("cuda memory occupation :" + to_string((double)(sizeof(float)*(5*NODE_NUMBER + 2*NODE_NUMBER*PREV_NODE_NUMBER
          + NODE_NUMBER * NEXT_NODE_NUMBER))/(1024*1024)));
      }
      //The corresponding math formulas are recorded in the cu file for these methods;
      //calculate activation
-     void calcActivate(Matrix::Matrix2d* prevNodes);
+     virtual void calcActivate(Matrix::Matrix2d* prevNodes);
 
      //calculate the errors as output layer
-     void propagatingOutput(Matrix::Matrix2d* correctOut);
+     virtual void propagatingOutput(Matrix::Matrix2d* correctOut);
 
      //calculate the errors
-     void propagate(Matrix::Matrix2d* nextWeights, Matrix::Matrix2d *nextErrors);
+     virtual void propagate(Matrix::Matrix2d* nextWeights, Matrix::Matrix2d *nextErrors);
 
      //update the memories of weight derivatives
      void recWeights(Matrix::Matrix2d* prevActivations);
