@@ -181,7 +181,7 @@ __global__ void crossPrefetching(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2,
             }
         }
 
-#pragma unroll
+        #pragma unroll
         for (int row = 0; row < TILE_SIZE; row++) {
             //pick a value of mat2 and put it into the registers
             mat2Value = mat2->get(tileId * TILE_SIZE + row, resultCol);
@@ -230,7 +230,7 @@ __global__ void crossPrefetchingA(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2
             }
         }
 
-#pragma unroll
+        #pragma unroll
         for (int row = 0; row < TILE_SIZE; row++) {
             //pick a value of mat2 and put it into the registers
             mat2Value = mat2->get(tileId * TILE_SIZE + row, resultCol);
@@ -352,6 +352,20 @@ __global__ void sigmoidDerivative(Matrix::Matrix2d *mat1, Matrix::Matrix2d *resu
 __global__ void insertColumn(Matrix::Matrix2d *mat1, Matrix::Matrix2d *column, int colIndex){
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     mat1->set(index, colIndex, column->get(index,0));
+}
+
+__global__ void leakyReluActivation(Matrix::Matrix2d *mat1, Matrix::Matrix2d *result, float ALPHA){
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    float x = mat1->get(row, col);
+    result->set(row, col, x > 0 ? x : ALPHA * x);
+}
+
+__global__ void leakyReluDerivative(Matrix::Matrix2d *mat1, Matrix::Matrix2d *result, float ALPHA){
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    float x = mat1->get(row, col);
+    result->set(row, col, x > 0 ? 1 : ALPHA);
 }
 
 //memory Control:
@@ -584,6 +598,24 @@ Matrix::Matrix2d *Matrix::callDerivativeSigmoid(Matrix::Matrix2d *mat1, Matrix::
     cudaDeviceSynchronize();
     return result;
 }
+
+Matrix::Matrix2d *Matrix::callLeakyReluDerivative(Matrix::Matrix2d *mat1, Matrix::Matrix2d *result, float ALPHA) {
+    dim3 gridSize = dim3((mat1->colcount + CUDA_BLOCK_SIZE.x - 1) / (CUDA_BLOCK_SIZE.x),
+                         (mat1->rowcount + CUDA_BLOCK_SIZE.y - 1) / CUDA_BLOCK_SIZE.y);
+    leakyReluDerivative<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1, result, ALPHA);
+    cudaDeviceSynchronize();
+    return result;
+}
+
+Matrix::Matrix2d *Matrix::callLeakyReluActivation(Matrix::Matrix2d *mat1, Matrix::Matrix2d *result, float ALPHA) {
+    dim3 gridSize = dim3((mat1->colcount + CUDA_BLOCK_SIZE.x - 1) / (CUDA_BLOCK_SIZE.x),
+                         (mat1->rowcount + CUDA_BLOCK_SIZE.y - 1) / CUDA_BLOCK_SIZE.y);
+    leakyReluActivation<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1, result, ALPHA);
+    cudaDeviceSynchronize();
+    return result;
+}
+
+
 
 void reduce(float *input, float *output, int size) {
     int factor = CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y;

@@ -13,6 +13,7 @@
 #include <cassert>
 
 static const dim3 CUDA_BLOCK_SIZE = dim3(16, 16);
+static const float RELU_ALPHA = 0.01f;
 static const int TILE_SIZE = 16;
 static const int VECTOR_SIZE = 4;
 
@@ -86,6 +87,9 @@ public:
     static Matrix2d* callActivationSigmoid(Matrix2d* mat1);
     static Matrix2d* callActivationSigmoid(Matrix2d *mat1, Matrix2d *result);
     static Matrix2d* callDerivativeSigmoid(Matrix2d *mat1, Matrix2d *result);
+    static Matrix2d* callLeakyReluActivation(Matrix2d *mat1, Matrix2d *result, float ALPHA);
+    static Matrix2d* callLeakyReluDerivative(Matrix2d *mat1, Matrix2d *result, float ALPHA);
+
 };
 
 //method that does not need the class name (for clarity)
@@ -107,6 +111,14 @@ static Matrix::Matrix2d* sigmoid(Matrix::Matrix2d* mat1, Matrix::Matrix2d* resul
 
 static Matrix::Matrix2d* sigmoidD(Matrix::Matrix2d* mat1, Matrix::Matrix2d* result){
     return Matrix::callDerivativeSigmoid(mat1, result);
+}
+
+static Matrix::Matrix2d* lRelu(Matrix::Matrix2d* mat1, Matrix::Matrix2d* result){
+    return Matrix::callLeakyReluActivation(mat1, result, RELU_ALPHA);
+}
+
+static Matrix::Matrix2d* lReluD(Matrix::Matrix2d* mat1, Matrix::Matrix2d* result){
+    return Matrix::callLeakyReluDerivative(mat1, result, RELU_ALPHA);
 }
 
 static Matrix::Matrix2d* copyD2D(Matrix::Matrix2d* src, Matrix::Matrix2d* dist){

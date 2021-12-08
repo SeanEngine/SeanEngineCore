@@ -11,16 +11,16 @@ string DenseLayer::getType() {
 
 //z = w * a + b , a1 = sigmoid(z)
 void DenseLayer::calcActivate(Matrix::Matrix2d *prevNodes) {
-    nodes = sigmoid(*cross(weights, prevNodes, z) + biases, nodes);
+    nodes = lRelu(*cross(weights, prevNodes, z) + biases, nodes);
 }
 //El = (al - y) *Hadamard* (sigmoidDerivative(z))
 void DenseLayer::propagatingOutput(Matrix::Matrix2d *correctOut) {
     copyD2D(nodes, errors);
-    errors = *(*errors-correctOut)*sigmoidD(z,z);
+    errors = *(*errors-correctOut) * lReluD(z, z);
 }
 //El = (W(l+1))^T * E(l+1) *Hadamard* sigmoidD(z(l))
 void DenseLayer::propagate(Matrix::Matrix2d *nextWeights, Matrix::Matrix2d *nextErrors) {
-    errors = *cross((transpose(nextWeights,weightBuffer)),nextErrors, errors)* sigmoidD(z,z);
+    errors = *cross((transpose(nextWeights,weightBuffer)),nextErrors, errors)* lReluD(z,z);
 }
 
 //add the deltas onto the recorded derivatives for averaging in batch training
