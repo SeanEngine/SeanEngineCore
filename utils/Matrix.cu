@@ -451,8 +451,9 @@ Matrix::Matrix2d *Matrix::callCrossCompOpt(Matrix::Matrix2d *mat1, Matrix::Matri
 
 Matrix::Matrix2d *
 Matrix::callCrossPrefetching(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2, Matrix::Matrix2d *result) {
-    assert(mat1->colcount == mat2->rowcount && mat1->rowcount == result->rowcount &&
-           mat2->colcount == result->colcount);
+    assert(mat1->colcount == mat2->rowcount);
+    assert(mat1->rowcount == result->rowcount);
+    assert(mat2->colcount == result->colcount);
     dim3 blockSize = dim3(TILE_SIZE, VECTOR_SIZE);
     dim3 grid = dim3((mat2->colcount + (TILE_SIZE * VECTOR_SIZE) - 1) /
                      (TILE_SIZE * VECTOR_SIZE), (mat1->rowcount + TILE_SIZE - 1) / TILE_SIZE);
@@ -551,7 +552,7 @@ void Matrix::inspect(Matrix2d *mat1) {
                cudaMemcpyDeviceToHost);
     for (int i = 0; i < debug->rowcount; i++) {
         for (int j = 0; j < debug->colcount; j++) {
-            std::cout << (*(debug->elements + i * debug->colcount + j)) << " ";
+            std::cout << (*(debug->elements + i * debug->colcount + j))   << " ";
         }
         std::cout << std::endl;
     }

@@ -31,7 +31,7 @@ void DenseLayer::recWeights(Matrix::Matrix2d *prevActivations) {
 
 //WB = El
 void DenseLayer::recBias() {
-    biasDerivatives = *biasDerivatives + errors;
+    *biasDerivatives += errors;
 }
 
 void DenseLayer::applyWeights(int BATCH_SIZE, float LEARNING_RATE) {
@@ -45,7 +45,7 @@ void DenseLayer::applyBias(int BATCH_SIZE, float LEARNING_RATE) {
 //these methods are inherited, thus pre-conditions are needed
 void DenseLayer::activate(Layer *prev) {
     assert(prev->nodes!=nullptr);
-    assert(prev->nodes->rowcount * prev->nodes->colcount == this->PREV_NODE_NUMBER);
+    assert(prev->nodes->rowcount == this->PREV_NODE_NUMBER);
     this->calcActivate(prev->nodes);
 }
 

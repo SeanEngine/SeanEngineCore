@@ -22,18 +22,14 @@ int main(int argc, char **argv) {
     model->loadModel();
     model->loadDataSet();
     model->loadData();
+    //Matrix::inspect(((DenseLayer*)(model->layers[1]))->weights);
 
-    auto* label = new Layer(10);
-    label->nodes = model->labelBatch[0];
-    cout<<gradCheck(model->layers, model->dataBatch[0], label);
-/*
-    for(int i=0; i<1000; i++) {
+    for(int i=0; i<1e7; i++) {
         model->loadData();
         model->train();
     }
-    */
-
+    //Matrix::inspect(((DenseLayer*)(model->layers[1]))->weights);
+    //Matrix::inspect(model->dataBatch[model->dataBatch.size()-1]);
+    //Matrix::inspect(model->labelBatch[model->labelBatch.size()-1]);
     //Matrix::inspect(model->layers[3]->nodes);
-
-
 }

@@ -6,9 +6,9 @@
 #include "GradientCheck.cuh"
 float GradientCheck::gradientCheck(vector<Layer*> layers, Matrix::Matrix2d* input, Layer* label) {
     layers[0]->nodes = input;
-    float EPSILON = 1e-2;
+    float EPSILON = 1e-4;
     int flattenSize = 0;
-    double divergence = 0;
+    double divergence;
 
     //register the flat vector
     for(int i=1; i<layers.size(); i++){

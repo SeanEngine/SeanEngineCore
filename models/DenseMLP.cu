@@ -99,7 +99,7 @@ void DenseMLP::loadDataSet() {
         Matrix::Matrix2d* data, *label;
         cudaMallocHost((void**)&data, sizeof(Matrix::Matrix2d));
         cudaMallocHost((void**)&label, sizeof(Matrix::Matrix2d));
-        Matrix::callAllocElementD(data, cfg.INPUT_SIZE_X* cfg.INPUT_SIZE_X, 1);
+        Matrix::callAllocElementD(data, cfg.INPUT_SIZE_X, cfg.INPUT_SIZE_X);
         dataBatch.push_back(data);
         Matrix::callAllocElementD(label, cfg.OUTPUT_SIZE,1);
         labelBatch.push_back(label);
@@ -160,6 +160,7 @@ void DenseMLP::train() {
         cudaFreeHost(debug->elements);
         cudaFreeHost(debug);
     }
+
 
     //apply changes (errors)
     for (int i = (int)layers.size()-1; i > 0; i--) {
