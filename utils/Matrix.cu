@@ -252,28 +252,17 @@ __global__ void crossPrefetchingA(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2
 }
 
 
-__global__ void reduction(float *input, float *result) {
+__global__ void reduction(int n, const float *input, float *result) {
 
-    //define a shared memory block of uncertain size
-    extern __shared__ float sPartials[];
-
-    // perform first level of reduction,
-    // reading from global memory, writing to shared memory
-    unsigned int tid = threadIdx.x;
-    unsigned int i = blockIdx.x * (blockDim.x * 2) + threadIdx.x;
-    sPartials[tid] = input[i] + input[i + blockDim.x];
+    int globalID = threadIdx.x + blockIdx.x * blockDim.x;
+    int warpID = globalID % WARP_SIZE;
+    float val = globalID < n ? input[globalID] : 0;
     __syncthreads();
-
-
-    for (int s = blockDim.x / 2; s > 0; s >>= 1) {
-        if (tid < s) {
-            sPartials[tid] += sPartials[tid + s];
-        }
-        __syncthreads();
+    for (int offset = WARP_SIZE >> 1; offset > 0; offset >>= 1){
+        //let all threads to add the value from other threads
+        val += __shfl_xor_sync(0xffffffff, val, offset, WARP_SIZE);
     }
-
-    // write result for this block to global mem
-    if (tid == 0) result[blockIdx.x] = sPartials[0];
+    if(warpID == 0) result[globalID/WARP_SIZE] = val;
 }
 
 __global__ void hadmardProduct(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2) {
@@ -538,19 +527,19 @@ void Matrix::inspect(Matrix2d *mat1) {
 
 
 void reduce(float *input, float *output, int size) {
-    int factor = CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y;
-    if (size < factor) {
-        reduction<<<1, factor>>>(input, output);
+    int procSize = size;
+    int bSize = CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y;
+    float* proc;
+    cudaMalloc((void**)&proc, sizeof(float) * size);
+    cudaMemcpy(proc, input, sizeof(float) * size, cudaMemcpyDeviceToDevice);
+    while(procSize/WARP_SIZE > 0){
+        reduction<<<procSize/bSize + 1, bSize>>>(procSize, proc, proc);
+        procSize = procSize%WARP_SIZE ? procSize/WARP_SIZE + 1 : procSize / WARP_SIZE;
         cudaDeviceSynchronize();
-        return;
     }
-    size = (size + factor - 1) / factor;
-    float *fractal;
-    cudaMalloc((void **) &fractal, sizeof(float) * size);
-    reduction<<<size, factor>>>(input, fractal);
+    reduction<<<1, bSize>>>(procSize, proc, proc);
     cudaDeviceSynchronize();
-    reduce(fractal, output, size);
-    cudaFree(fractal);
+    cudaMemcpy(output, proc, sizeof(float), cudaMemcpyDeviceToHost);
 }
 
 void Matrix::callSum(Matrix::Matrix2d *mat1, float *sumBuffer) {

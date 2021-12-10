@@ -10,6 +10,8 @@
  * this class is for all the other utilities that are not 
  * considered to be a part of the matrix operations
  */
+static const float RELU_ALPHA = 0.01f;
+static const int CUDA_SOFTMAX_BLOCK = 1024;
 class NeuralUtils {
 public:
     //activation methods
@@ -18,6 +20,9 @@ public:
     static Matrix::Matrix2d* callDerivativeSigmoid(Matrix::Matrix2d *mat1, Matrix::Matrix2d *result);
     static Matrix::Matrix2d* callLeakyReluActivation(Matrix::Matrix2d *mat1, Matrix::Matrix2d *result, float ALPHA);
     static Matrix::Matrix2d* callLeakyReluDerivative(Matrix::Matrix2d *mat1, Matrix::Matrix2d *result, float ALPHA);
+
+    //loss
+    static Matrix::Matrix2d* callSoftMax(Matrix::Matrix2d* mat1, Matrix::Matrix2d* result,  float* buffer);
 };
 
 static Matrix::Matrix2d* sigmoid(Matrix::Matrix2d* mat1, Matrix::Matrix2d* result){

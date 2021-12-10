@@ -86,7 +86,7 @@ float GradientCheck::gradientCheck(vector<Layer*> layers, Matrix::Matrix2d* inpu
         theta->elements[flattenSize + i] = (cost1 - cost0)/(2*EPSILON);
     }
 
-    //calculate the sum of differences:
+    //calculate the sumH of differences:
     double up = 0;           //grad - grad approx
     double down1 = 0;        //grad
     double down2 = 0;        //grad approx

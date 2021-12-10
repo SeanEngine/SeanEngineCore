@@ -13,7 +13,7 @@
 #include <cassert>
 
 static const dim3 CUDA_BLOCK_SIZE = dim3(16, 16);
-static const float RELU_ALPHA = 0.01f;
+static const int WARP_SIZE = 32;
 static const int TILE_SIZE = 16;
 static const int VECTOR_SIZE = 4;
 
@@ -115,7 +115,7 @@ static Matrix::Matrix2d* insertCol(Matrix::Matrix2d* mat1, Matrix::Matrix2d* col
     return Matrix::callInsertCol(mat1, column, colIndex);
 }
 
-static float sum(Matrix::Matrix2d* mat1){
+static float sumH(Matrix::Matrix2d* mat1){
     float* onDevice, *onHost;
     cudaMalloc((void**)&onDevice, sizeof(float));
     cudaMallocHost((void**)&onHost, sizeof(float));
@@ -126,6 +126,10 @@ static float sum(Matrix::Matrix2d* mat1){
     float out = *onHost;
     cudaFree(onHost);
     return out;
+}
+
+static void sum(Matrix::Matrix2d* mat1, float* buffer){
+   Matrix::callSum(mat1, buffer);
 }
 
 static float sumC(Matrix::Matrix2d* mat1){
