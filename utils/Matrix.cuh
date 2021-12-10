@@ -64,8 +64,8 @@ public:
 
     //method callings
     static Matrix2d* callCross(Matrix2d* mat1, Matrix2d* mat2, Matrix2d* result);
-    static Matrix2d* callCrossPrefetching(Matrix2d *mat1, Matrix2d *mat2, Matrix2d *result);
-    static Matrix2d* callCrossPrefetchingA(Matrix2d *mat1, Matrix2d *mat2, Matrix2d *result);
+    static Matrix2d* callCrossPrefetching(Matrix2d *mat1, Matrix2d *mat2, Matrix2d *result);  //A*B
+    static Matrix2d* callCrossPrefetchingA(Matrix2d *mat1, Matrix2d *mat2, Matrix2d *result);  //A*B + C
     static Matrix2d* callCrossCompOpt(Matrix2d* mat1, Matrix2d* mat2, Matrix2d* result);
     static Matrix2d* callCrossPOLD(Matrix2d* mat1, Matrix2d* mat2, Matrix2d* result);
     static Matrix2d* callTranspose(Matrix2d* mat1, Matrix2d* result);
