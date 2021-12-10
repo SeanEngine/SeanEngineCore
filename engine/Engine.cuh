@@ -21,8 +21,8 @@ public:
         char* TRAIN_DATA_PATH = "C:\\Users\\DanielSun\\Desktop\\resources\\mnist\\decompress_mnist\\train";
         char* TRAIN_LABEL_PATH;
 
-        int TRAIN_BATCH_SIZE = 5;
-        float LEARNING_RATE = 0.0003f;
+        int TRAIN_BATCH_SIZE = 10;
+        float LEARNING_RATE = 0.01f;
         bool LOAD_MODEL_FROM_SAV = false;
     };
 

@@ -3,22 +3,23 @@
 //
 
 #include "DenseLayer.cuh"
+#include "SoftmaxLayer.cuh"
 #include <cassert>
 
 string DenseLayer::getType() {
     return "DENSE";
 }
 
-//z = w * a + b , a1 = sigmoid(z)
+//z = w * a + b , a1 = relu(z)
 void DenseLayer::calcActivate(Matrix::Matrix2d *prevNodes) {
     nodes = lRelu(*cross(weights, prevNodes, z) + biases, nodes);
 }
-//El = (al - y) *Hadamard* (sigmoidDerivative(z))
+//El = (al - y) *Hadamard* (reluDerivative(z))
 void DenseLayer::propagatingOutput(Matrix::Matrix2d *correctOut) {
     copyD2D(nodes, errors);
     errors = *(*errors-correctOut) * lReluD(z, z);
 }
-//El = (W(l+1))^T * E(l+1) *Hadamard* sigmoidD(z(l))
+//El = (W(l+1))^T * E(l+1) *Hadamard* relu(z(l))
 void DenseLayer::propagate(Matrix::Matrix2d *nextWeights, Matrix::Matrix2d *nextErrors) {
     errors = *cross((transpose(nextWeights,weightBuffer)),nextErrors, errors)* lReluD(z,z);
 }
@@ -56,6 +57,11 @@ void DenseLayer::propagate(Layer *prev, Layer *next) {
     //as hidden layer
     if(next->getType()=="DENSE"){
         auto* proc = (DenseLayer*)next;
+        propagate(proc->weights, proc->errors);
+    }
+
+    if(next->getType()=="SOFTMAX"){
+        auto* proc = (SoftmaxLayer*)next;
         propagate(proc->weights, proc->errors);
     }
 

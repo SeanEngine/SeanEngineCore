@@ -23,6 +23,8 @@ public:
 
     //loss
     static Matrix::Matrix2d* callSoftMax(Matrix::Matrix2d* mat1, Matrix::Matrix2d* result,  float* buffer);
+    static Matrix::Matrix2d* callSoftMaxDerivatives(Matrix::Matrix2d* mat1, Matrix::Matrix2d* correctOut, Matrix::Matrix2d* result);
+    static Matrix::Matrix2d* callSoftMaxCost(Matrix::Matrix2d* mat1,Matrix::Matrix2d *correctOut, Matrix::Matrix2d* result);
 };
 
 static Matrix::Matrix2d* sigmoid(Matrix::Matrix2d* mat1, Matrix::Matrix2d* result){
@@ -40,4 +42,18 @@ static Matrix::Matrix2d* lRelu(Matrix::Matrix2d* mat1, Matrix::Matrix2d* result)
 static Matrix::Matrix2d* lReluD(Matrix::Matrix2d* mat1, Matrix::Matrix2d* result){
     return NeuralUtils::callLeakyReluDerivative(mat1, result, RELU_ALPHA);
 }
+
+static Matrix::Matrix2d* softmax(Matrix::Matrix2d* mat1, Matrix::Matrix2d* result, float* buffer){
+    return NeuralUtils::callSoftMax(mat1, result, buffer);
+}
+
+static Matrix::Matrix2d* softmaxD(Matrix::Matrix2d* mat1, Matrix::Matrix2d* correctOut, Matrix::Matrix2d* result){
+    return NeuralUtils::callSoftMaxDerivatives(mat1, correctOut, result);
+}
+//calculate the loss of the softmax output
+static Matrix::Matrix2d* softMaxL(Matrix::Matrix2d* mat1, Matrix::Matrix2d* correctOut, Matrix::Matrix2d* result){
+    return NeuralUtils::callSoftMaxCost(mat1, correctOut, result);
+}
+
+
 #endif //CUDANNGEN2_NEURALUTILS_CUH

@@ -7,6 +7,7 @@
 #include "../utils/logger.cuh"
 #include "../utils/Matrix.cuh"
 #include "../layers/DenseLayer.cuh"
+#include "../layers/SoftmaxLayer.cuh"
 #include <random>
 
 int readDataset(const string& path0, vector<Matrix::Matrix2d*>* data, vector<Matrix::Matrix2d*>* label,
@@ -68,7 +69,7 @@ void DenseMLP::registerModel() {
      layers.push_back(new Layer(784));  //input layer
      layers.push_back(new DenseLayer(16, 784, 16, 1));
      layers.push_back(new DenseLayer(16, 16, 10, 2));
-     layers.push_back(new DenseLayer(10, 16, 10, 3));
+     layers.push_back(new SoftmaxLayer(10, 16, 10, 3));
 }
 
 
@@ -79,8 +80,14 @@ void DenseMLP::loadModel() {
          return;
      }
     for (Layer* layer : layers){
-        if(layer->getType() == "DENSE"){
+        if(layer->getType() == "DENSE" ){
             auto* temp = (DenseLayer*)layer;
+            Matrix::callAllocRandom(temp->weights);
+            Matrix::callAllocRandom(temp->biases);
+            logInfo("layer: " + layer->getType() + " random allocated");
+        }
+        if(layer->getType() == "SOFTMAX"){
+            auto* temp = (SoftmaxLayer*)layer;
             Matrix::callAllocRandom(temp->weights);
             Matrix::callAllocRandom(temp->biases);
             logInfo("layer: " + layer->getType() + " random allocated");
@@ -133,7 +140,7 @@ void DenseMLP::train() {
         }
 
         //calculate cost
-        costBuffer = *(*(*copyD2D(layers[layers.size()-1]->nodes, costBuffer) - labelBatch[trial])^2)*0.5;
+        costBuffer = softMaxL(layers[layers.size()-1]->nodes, labelBatch[trial], costBuffer);
         float cost = sumC(costBuffer);
         correctOut->nodes = labelBatch[trial];
         pastCost += cost;

@@ -47,6 +47,7 @@ __global__ void softmax1024(int n, const float* src, float* dist){
     if(laneID == 0 && globalID < procSize ) buffer[globalID/WARP_SIZE] = reduceValue;
     __syncthreads();
 
+    if(globalID<n)
     dist[globalID] = value / buffer[0];
 }
 
@@ -71,6 +72,17 @@ __global__ void softMaxActivate(int n, const float* buffer, float* dist){
     unsigned int globalID = threadIdx.x + blockIdx.x * blockDim.x;
     if(globalID < n)
     dist[globalID] = exp(dist[globalID]) / buffer[0];
+}
+
+__global__ void softMaxDerivative(Matrix::Matrix2d* mat1, Matrix::Matrix2d* correctOut, Matrix::Matrix2d* result){
+    int globalID = threadIdx.x + blockIdx.x * blockDim.x;
+    result->set( globalID, 0,mat1->get(globalID,0) - correctOut->get(globalID,0));
+}
+
+// L = - y * ln(a)
+__global__ void softMaxCost(Matrix::Matrix2d* mat1, Matrix::Matrix2d* correctOut, Matrix::Matrix2d* result){
+    int globalID = threadIdx.x + blockIdx.x * blockDim.x;
+    result->set( globalID, 0,- correctOut->get(globalID,0) * log(mat1->get(globalID,0)));
 }
 
 __global__ void sigmoidActivation(Matrix::Matrix2d *mat1) {
@@ -179,6 +191,27 @@ Matrix::Matrix2d *NeuralUtils::callSoftMax(Matrix::Matrix2d *mat1, Matrix::Matri
     softMaxReduce<<<gridSize,blockSize>>>(procSize, buffer);
     cudaDeviceSynchronize();
     softMaxActivate<<<gridSize, blockSize>>>(n, buffer, result->elements);
+    cudaDeviceSynchronize();
+    return result;
+}
+
+Matrix::Matrix2d *
+NeuralUtils::callSoftMaxDerivatives(Matrix::Matrix2d *mat1, Matrix::Matrix2d *correctOut, Matrix::Matrix2d *result) {
+    assert(mat1->rowcount == correctOut->rowcount && mat1->rowcount == result->rowcount);
+    assert(mat1->colcount == 1 && result->colcount == 1 && correctOut->colcount==1);
+    int n =  mat1->rowcount;
+    unsigned int gridSize = n/ (CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y) + 1;
+    unsigned int blockSize = CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y;
+    softMaxDerivative<<<gridSize, blockSize>>>(mat1, correctOut, result);
+    cudaDeviceSynchronize();
+    return result;
+}
+
+Matrix::Matrix2d *NeuralUtils::callSoftMaxCost(Matrix::Matrix2d *mat1,Matrix::Matrix2d *correctOut, Matrix::Matrix2d *result) {
+    int n =  mat1->rowcount;
+    unsigned int gridSize = n/ (CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y) + 1;
+    unsigned int blockSize = CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y;
+    softMaxCost<<<gridSize, blockSize>>>(mat1, correctOut, result);
     cudaDeviceSynchronize();
     return result;
 }

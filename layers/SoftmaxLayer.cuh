@@ -7,11 +7,10 @@
 #include "Layer.cuh"
 #include "DenseLayer.cuh"
 
-class SoftmaxLayer : DenseLayer{
+class SoftmaxLayer : public DenseLayer{
 public:
     SoftmaxLayer(int nodeNumber, int prevNodeNumber, int nextNodeNumber, int layerId)
          : DenseLayer(nodeNumber, prevNodeNumber, nextNodeNumber, layerId) {
-
     }
 
     string getType() override;

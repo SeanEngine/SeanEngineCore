@@ -16,16 +16,6 @@ using namespace std;
 
 int main(int argc, char **argv) {
 
-    Matrix::Matrix2d* mat1;
-    float * buffer;
-    cudaMallocHost((void**)&mat1, sizeof(Matrix::Matrix2d));
-    cudaMalloc((void**)&buffer, sizeof(float)*1028);
-    Matrix::callAllocElementD(mat1, 1, 569);
-
-    Matrix::callAllocRandom(mat1);
-    NeuralUtils::callSoftMax(mat1, mat1, buffer);
-    cout<<sumH(mat1)<<endl;
-/*
     auto *model = new DenseMLP();
     model->registerModel();
     model->loadModel();
@@ -37,9 +27,10 @@ int main(int argc, char **argv) {
         model->loadData();
         model->train();
     }
-    //Matrix::inspect(((DenseLayer*)(model->layers[1]))->weights);
+    //Matrix::inspect(((DenseLayer*)(model->layers[3]))->errors);
+    Matrix::inspect(((DenseLayer*)(model->layers[3]))->nodes);
     //Matrix::inspect(model->dataBatch[model->dataBatch.size()-1]);
     //Matrix::inspect(model->labelBatch[model->labelBatch.size()-1]);
     //Matrix::inspect(model->layers[3]->nodes);
-*/
+
 }
