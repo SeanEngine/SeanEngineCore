@@ -67,8 +67,8 @@ void DenseMLP::registerModel() {
      Matrix::callAllocElementD(costBuffer, cfg.OUTPUT_SIZE, 1);
      logInfo("===========< REGISTERING : DenseMLP >============",0x05);
      layers.push_back(new Layer(784));  //input layer
-     layers.push_back(new DenseLayer(16, 784, 16, 1));
-     layers.push_back(new DenseLayer(16, 16, 10, 2));
+     layers.push_back(new DenseLayer(128, 784, 16, 1));
+     layers.push_back(new DenseLayer(16, 128, 10, 2));
      layers.push_back(new SoftmaxLayer(10, 16, 10, 3));
 }
 
