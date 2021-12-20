@@ -8,7 +8,7 @@
 #include <io.h>
 #include "../utils/logger.cuh"
 
-__global__ void genMat(Matrix::Matrix2d* target, unsigned char* buffer){
+__global__ void genMat(Matrix::Matrix2d* target, const unsigned char* buffer){
     int row = threadIdx.y + blockIdx.y * blockDim.y;
     int col = threadIdx.x + blockIdx.x * blockDim.x;
     int index = (row*target->colcount) + col;
@@ -35,7 +35,6 @@ void BMPProc(vector<void*>* args, dim3i blockSize, dim3i threadId, int* executio
     genMat<<<gridSize, CUDA_BLOCK_SIZE>>>(distBuf, readBuffer);
     cudaDeviceSynchronize();
     cudaMemcpy(dist->elements, distBuf->elements, dist->colcount*dist->rowcount*sizeof(float), cudaMemcpyDeviceToHost);
-
 }
 
 void readFunc(vector<void*>* args, dim3i blockSize, dim3i threadId, int* executionFlags){

@@ -13,16 +13,16 @@
 #include <cassert>
 
 static const dim3 CUDA_BLOCK_SIZE = dim3(16, 16);
-static const int WARP_SIZE = 32;
-static const int TILE_SIZE = 16;
-static const int VECTOR_SIZE = 4;
+static const unsigned int WARP_SIZE = 32;
+static const unsigned int TILE_SIZE = 16;
+static const unsigned int VECTOR_SIZE = 4;
 
 //Mo stands for Matrix Operations
 class Matrix {
 public:
     struct Matrix2d{
-        int rowcount;
-        int colcount;
+        unsigned int rowcount;
+        unsigned int colcount;
         float* elements;
 
         //operator definitions
@@ -37,13 +37,20 @@ public:
         Matrix2d* operator*(float con);
 
         //get the element at the particular location
-        __device__ float get(int row, int col) const  ;
-        __device__ void set(int row, int col, float value) const ;
-        __device__ void add(int row, int col, float value) const ;
+        __device__ float get(unsigned int row, unsigned int col) const  ;
+        __device__ void set(unsigned int row, unsigned int col, float value) const ;
+        __device__ void add(unsigned int row, unsigned int col, float value) const ;
 
-        __host__ void setH2D(int row, int col, float value);
-        __host__ void setH2D(int offset, float value);
-        __host__ float getH2D(int row, int col) const;
+        __host__ void setH2D(unsigned int row, unsigned int col, float value);
+        __host__ void setH2D(unsigned int offset, float value);
+        __host__ float getH2D(unsigned int row, unsigned int col) const;
+    };
+
+    struct Matrix3d{
+        unsigned int rowcount;
+        unsigned int colcount;
+        unsigned int depth;
+        float* elements;
     };
 
     //faster calculation methods
@@ -53,8 +60,8 @@ public:
     static void inspect(Matrix2d *mat1);
 
     //memory control and element allocation
-    static void callAllocElementH(Matrix2d *mat1, int row, int col);
-    static void callAllocElementD(Matrix2d *mat1, int row, int col);
+    static void callAllocElementH(Matrix2d *mat1, unsigned int row, unsigned int col);
+    static void callAllocElementD(Matrix2d *mat1, unsigned int row, unsigned int col);
     static void callAllocRandom(Matrix2d *mat1);
     static void callAllocZero(Matrix2d *mat1);
     static void callAllocConst(Matrix2d *mat1, float in);
@@ -64,6 +71,8 @@ public:
 
     //method callings
     static Matrix2d* callCross(Matrix2d* mat1, Matrix2d* mat2, Matrix2d* result);
+    static Matrix2d* callCrossWMMA(Matrix2d *mat1, Matrix2d *mat2, Matrix2d *result);
+    static Matrix2d* callCrossTilingWMMA(Matrix2d *mat1, Matrix2d *mat2, Matrix2d *result);
     static Matrix2d* callCrossPrefetching(Matrix2d *mat1, Matrix2d *mat2, Matrix2d *result);  //A*B
     static Matrix2d* callCrossPrefetchingA(Matrix2d *mat1, Matrix2d *mat2, Matrix2d *result);  //A*B + C
     static Matrix2d* callCrossCompOpt(Matrix2d* mat1, Matrix2d* mat2, Matrix2d* result);
@@ -72,7 +81,7 @@ public:
     static void callSum(Matrix2d *mat1, float* sumBuffer);
 
     //edit element in batches
-    static Matrix2d* callInsertCol(Matrix2d* mat1, Matrix2d* column, int colIndex);
+    static Matrix2d* callInsertCol(Matrix2d* mat1, Matrix2d* column, unsigned int colIndex);
 
     //operator methods and normal operations
     static Matrix2d* callHadmardP(Matrix2d* mat1, Matrix2d* mat2);
@@ -111,7 +120,7 @@ static Matrix::Matrix2d* copyH2D(Matrix::Matrix2d* src, Matrix::Matrix2d* dist){
     return Matrix::callCopyH2D(src,dist);
 }
 
-static Matrix::Matrix2d* insertCol(Matrix::Matrix2d* mat1, Matrix::Matrix2d* column, int colIndex){
+static Matrix::Matrix2d* insertCol(Matrix::Matrix2d* mat1, Matrix::Matrix2d* column, unsigned int colIndex){
     return Matrix::callInsertCol(mat1, column, colIndex);
 }
 
@@ -138,7 +147,7 @@ static float sumC(Matrix::Matrix2d* mat1){
     cudaMallocHost((void**)&host, sizeof(Matrix::Matrix2d));
     Matrix::callAllocElementH(host, mat1->rowcount, mat1->colcount);
     copyH2D(mat1,host);
-    for (int i=0; i<mat1->rowcount* mat1->colcount; i++){
+    for (unsigned int i=0; i<mat1->rowcount* mat1->colcount; i++){
         sum+=host->elements[i];
     }
     cudaFreeHost(host->elements);
