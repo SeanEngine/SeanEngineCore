@@ -7,11 +7,18 @@
 #include <cstdio>
 #include <iostream>
 //this will trigger an exception if the condition do not met
-#define cuAssert(condition) if(!(condition)){ asm{"trap"}; }
 
 __inline__ __device__ float warpReduce(float val) {
     for (int mask = WARP_SIZE >> 1; mask > 0; mask >>= 1) {
         val += __shfl_xor_sync(0xffffffff, val, mask);
+    }
+    return val;
+}
+
+__inline__ __device__ float warpCompare(float val) {
+    for (int mask = WARP_SIZE >> 1; mask > 0; mask >>= 1) {
+        float temp = __shfl_xor_sync(0xffffffff, val, mask);
+        val = temp > val ? temp : val;
     }
     return val;
 }
@@ -28,7 +35,7 @@ __global__ void softmax1024(int n, const float* src, float* dist){
     buffer[globalID] = value;
     __syncthreads();
 
-    int procSize = n;
+    unsigned int procSize = n;
 
     //cross warp reductions together with warp reduction
     while(procSize/WARP_SIZE > 0){
@@ -51,6 +58,64 @@ __global__ void softmax1024(int n, const float* src, float* dist){
     dist[globalID] = value / buffer[0];
 }
 
+// this method will divide all elements of the matrix by the largest element
+// preventing issues caused by overflowing of 32-bit floats with increasing model size.
+__global__ void softmaxControlled1024(int n, const float* src, float* dist){
+    unsigned int globalID = threadIdx.x + blockIdx.x * blockDim.x;
+    unsigned int laneID = globalID % WARP_SIZE;
+    __shared__ float buffer[CUDA_SOFTMAX_BLOCK];
+    float value = globalID < n ? src[globalID] : 0;
+    float reduceValue;
+    buffer[globalID] = value;
+    __syncthreads();
+
+    unsigned int procSize = n;
+
+    //run the reduction but for the max value
+    while(procSize/WARP_SIZE > 0){
+        reduceValue = globalID < procSize ? buffer[globalID] : 0;
+        __syncthreads();
+        reduceValue = warpCompare(reduceValue);
+        if(laneID == 0 && globalID < procSize) buffer[globalID/WARP_SIZE] = reduceValue;
+        procSize = procSize%WARP_SIZE ? procSize/WARP_SIZE + 1 : procSize/WARP_SIZE;
+        __syncthreads();
+    }
+
+    //the last iteration
+    reduceValue = globalID < procSize ? buffer[globalID] : 0;
+    __syncthreads();
+    reduceValue = warpCompare(reduceValue);
+    if(laneID == 0 && globalID < procSize ) buffer[globalID/WARP_SIZE] = reduceValue;
+    __syncthreads();
+
+    float MAX_VALUE = buffer[0];
+    value = globalID < n ? exp(value - MAX_VALUE) : 0;
+    buffer[globalID] = value;
+    __syncthreads();
+
+    procSize = n;
+
+    //cross warp reductions together with warp reduction
+    while(procSize/WARP_SIZE > 0){
+        reduceValue = globalID < procSize ? buffer[globalID] : 0;
+        __syncthreads();
+        reduceValue = warpReduce(reduceValue);
+        if(laneID == 0 && globalID < procSize) buffer[globalID/WARP_SIZE] = reduceValue;
+        procSize = procSize%WARP_SIZE ? procSize/WARP_SIZE + 1 : procSize/WARP_SIZE;
+        __syncthreads();
+    }
+
+    //the last iteration
+    reduceValue = globalID < procSize ? buffer[globalID] : 0;
+    __syncthreads();
+    reduceValue = warpReduce(reduceValue);
+    if(laneID == 0 && globalID < procSize ) buffer[globalID/WARP_SIZE] = reduceValue;
+    __syncthreads();
+
+    if(globalID<n)
+        dist[globalID] = value / buffer[0];
+}
+
 //store every exponents in the buffer
 __global__ void softMaxPrepare(int n, float* buffer){
     unsigned int globalID = threadIdx.x + blockIdx.x * blockDim.x;
@@ -59,8 +124,8 @@ __global__ void softMaxPrepare(int n, float* buffer){
 
 //execute reduction like normally
 __global__ void softMaxReduce(int n, float* buffer){
-    int globalID = threadIdx.x + blockIdx.x * blockDim.x;
-    int warpID = globalID % WARP_SIZE;
+    unsigned int globalID = threadIdx.x + blockIdx.x * blockDim.x;
+    unsigned int warpID = globalID % WARP_SIZE;
     float val = globalID < n ? buffer[globalID] : 0;
     __syncthreads();
     warpReduce(val);
@@ -75,19 +140,20 @@ __global__ void softMaxActivate(int n, const float* buffer, float* dist){
 }
 
 __global__ void softMaxDerivative(Matrix::Matrix2d* mat1, Matrix::Matrix2d* correctOut, Matrix::Matrix2d* result){
-    int globalID = threadIdx.x + blockIdx.x * blockDim.x;
+    unsigned int globalID = threadIdx.x + blockIdx.x * blockDim.x;
     result->set( globalID, 0,mat1->get(globalID,0) - correctOut->get(globalID,0));
 }
 
 // L = - y * ln(a)
 __global__ void softMaxCost(Matrix::Matrix2d* mat1, Matrix::Matrix2d* correctOut, Matrix::Matrix2d* result){
-    int globalID = threadIdx.x + blockIdx.x * blockDim.x;
-    result->set( globalID, 0,- correctOut->get(globalID,0) * log(mat1->get(globalID,0)));
+    unsigned int globalID = threadIdx.x + blockIdx.x * blockDim.x;
+    if (mat1->get(globalID,0) <= 0) mat1->set(globalID, 0, 1e-30);
+    result->set( globalID, 0,-(correctOut->get(globalID,0) * log(mat1->get(globalID,0))));
 }
 
 __global__ void sigmoidActivation(Matrix::Matrix2d *mat1) {
-    int row = blockIdx.y * blockDim.y + threadIdx.y;
-    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int row = blockIdx.y * blockDim.y + threadIdx.y;
+    unsigned int col = blockIdx.x * blockDim.x + threadIdx.x;
     float x = mat1->get(row, col);
     mat1->set(row, col, 1.0f / (1.0f + exp(-x)));
 }
@@ -97,30 +163,30 @@ __device__ float sigmoidCalc(float x) {
 }
 
 __global__ void sigmoidActivation(Matrix::Matrix2d *mat1, Matrix::Matrix2d *result) {
-    int row = blockIdx.y * blockDim.y + threadIdx.y;
-    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int row = blockIdx.y * blockDim.y + threadIdx.y;
+    unsigned int col = blockIdx.x * blockDim.x + threadIdx.x;
     float x = mat1->get(row, col);
     result->set(row, col, sigmoidCalc(x));
 }
 
 __global__ void sigmoidDerivative(Matrix::Matrix2d *mat1, Matrix::Matrix2d *result) {
-    int row = blockIdx.y * blockDim.y + threadIdx.y;
-    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int row = blockIdx.y * blockDim.y + threadIdx.y;
+    unsigned int col = blockIdx.x * blockDim.x + threadIdx.x;
     float x = mat1->get(row, col);
     result->set(row, col, sigmoidCalc(x) * (1.0f - sigmoidCalc(x)));
 }
 
 
 __global__ void leakyReluActivation(Matrix::Matrix2d *mat1, Matrix::Matrix2d *result, float ALPHA) {
-    int row = blockIdx.y * blockDim.y + threadIdx.y;
-    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int row = blockIdx.y * blockDim.y + threadIdx.y;
+    unsigned int col = blockIdx.x * blockDim.x + threadIdx.x;
     float x = mat1->get(row, col);
     result->set(row, col, x > 0 ? x : ALPHA * x);
 }
 
 __global__ void leakyReluDerivative(Matrix::Matrix2d *mat1, Matrix::Matrix2d *result, float ALPHA) {
-    int row = blockIdx.y * blockDim.y + threadIdx.y;
-    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int row = blockIdx.y * blockDim.y + threadIdx.y;
+    unsigned int col = blockIdx.x * blockDim.x + threadIdx.x;
     float x = mat1->get(row, col);
     result->set(row, col, x > 0 ? 1 : ALPHA);
 }
@@ -174,7 +240,7 @@ Matrix::Matrix2d *NeuralUtils::callSoftMax(Matrix::Matrix2d *mat1, Matrix::Matri
     unsigned int gridSize = n/ (CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y) + 1;
     unsigned int blockSize = CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y;
     if(n <= 1024) {
-        softmax1024<<<1, CUDA_SOFTMAX_BLOCK>>>(n, mat1->elements, result->elements);
+        softmaxControlled1024<<<1, CUDA_SOFTMAX_BLOCK>>>(n, mat1->elements, result->elements);
         cudaDeviceSynchronize();
         return result;
     }

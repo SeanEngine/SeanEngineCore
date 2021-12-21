@@ -14,38 +14,8 @@
 using namespace std;
 using namespace nvcuda;
 
-int main(int argc, char **argv) {;
-/*
-    int size = 64;
-    Matrix::Matrix2d*A, *B, *C;
-    cudaMallocHost(&A, sizeof(Matrix::Matrix2d));
-    cudaMallocHost(&B, sizeof(Matrix::Matrix2d));
-    cudaMallocHost(&C, sizeof(Matrix::Matrix2d));
-    Matrix::callAllocElementD(A, 64, 64);
-    Matrix::callAllocElementD(B, 64, 64);
-    Matrix::callAllocElementD(C, 64, 64);
-    Matrix::callAllocConst(A, 0.2f);
-    Matrix::callAllocConst(B, 0.2f);
+int main(int argc, char **argv) {
 
-    LARGE_INTEGER cpuFre;
-    LARGE_INTEGER begin;
-    LARGE_INTEGER end;
-
-    QueryPerformanceFrequency(&cpuFre);
-    QueryPerformanceCounter(&begin);
-
-    Matrix::callCrossTilingWMMA(A,B,C);
-
-    QueryPerformanceCounter(&end);
-    cout<<"TensorCore Tiling GEMM : "<<(end.QuadPart - begin.QuadPart)/1e7<<endl;
-    cout<<endl;
-    Matrix::inspect(C);
-    QueryPerformanceCounter(&begin);
-    cross(A,B,C);
-    QueryPerformanceCounter(&end);
-    Matrix::inspect(C);
-    cout<<"Prefetching : "<<(end.QuadPart - begin.QuadPart)/1e7<<endl;
-*/
     auto *model = new DenseMLP();
     model->registerModel();
     model->loadModel();
@@ -53,10 +23,35 @@ int main(int argc, char **argv) {;
     model->loadData();
     //Matrix::inspect(((DenseLayer*)(model->layers[1]))->weights);
 
-    for(int i=0; i<1e7; i++) {
+    for(int i=0; i<1e4; i++) {
         model->loadData();
         model->train();
     }
+
+    int success = 0;
+    for(int trial=0; trial<60000; trial++){
+        Matrix::Matrix2d* data = model->dataset[trial];
+        Matrix::Matrix2d* label = model->labelSet[trial];
+        model->layers[0]->nodes = flattern(data);
+        model->run();
+
+        int maxIndex1 = 0, maxIndex2 = 0;
+        Matrix::Matrix2d* debug;
+        cudaMallocHost((void**)&debug, sizeof(Matrix::Matrix2d));
+        Matrix::callAllocElementH(debug, 10, 1);
+        cudaMemcpy(debug->elements, model->layers[3]->nodes->elements, sizeof(float) * 10, cudaMemcpyDeviceToHost);
+        for(int i=0; i< 10; i++) {
+            maxIndex1 = debug->elements[i] > debug->elements[maxIndex1] ? i : maxIndex1;
+        }
+        cudaMemcpy(debug->elements, label->elements, sizeof(float) * 10, cudaMemcpyDeviceToHost);
+        for(int i=0; i< 10; i++){
+            maxIndex2 =  debug->elements[i] > debug->elements[maxIndex2] ? i : maxIndex2;
+        }
+        success = maxIndex1 == maxIndex2 ? success+1 : success;
+    }
+
+    cout<<success<<endl;
+
     //Matrix::inspect(((DenseLayer*)(model->layers[3]))->errors);
     //Matrix::inspect(((DenseLayer*)(model->layers[3]))->nodes);
     //Matrix::inspect(model->dataBatch[model->dataBatch.size()-1]);

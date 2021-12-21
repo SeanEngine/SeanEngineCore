@@ -114,7 +114,10 @@ void DenseMLP::loadDataSet() {
 }
 
 void DenseMLP::run() {
-
+    //forward feeding
+    for (int i = 1; i < layers.size(); i++) {
+        layers[i]->activate(layers[i - 1]);
+    }
 }
 
 void DenseMLP::loadData() {
@@ -139,11 +142,18 @@ void DenseMLP::train() {
             layers[i]->activate(layers[i - 1]);
         }
 
+        correctOut->nodes = labelBatch[trial];
         //calculate cost
         costBuffer = softMaxL(layers[layers.size()-1]->nodes, labelBatch[trial], costBuffer);
-        float cost = sumC(costBuffer);
-        correctOut->nodes = labelBatch[trial];
-        pastCost += cost;
+        cout<<"========="<<endl;
+        float cost = sumH(costBuffer);
+        Matrix::inspect(costBuffer);
+        cout<<endl;
+        Matrix::inspect(layers[layers.size()-1]->nodes);
+        cout<<endl;
+        Matrix::inspect(((SoftmaxLayer*)layers[layers.size()-1])->z);
+        pastCost+=cost;
+        cout<<cost<<" "<<endl;
 
         //calculate correction
         int maxIndex1 = 0, maxIndex2 = 0;

@@ -2,13 +2,6 @@
 // Created by DanielSun on 9/23/2021.
 //
 
-#define F16_EXPONENT_BITS 0x1F
-#define F16_EXPONENT_SHIFT 10
-#define F16_EXPONENT_BIAS 15
-#define F16_MANTISSA_BITS 0x3ff
-#define F16_MANTISSA_SHIFT (23 - F16_EXPONENT_SHIFT)
-#define F16_MAX_EXPONENT (F16_EXPONENT_BITS << F16_EXPONENT_SHIFT)
-
 #include "Matrix.cuh"
 #include <string>
 #include <iostream>
@@ -138,7 +131,7 @@ __global__ void crossTilingWMMA(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2, 
     unsigned int mat1Row = warpM * M;
     unsigned int mat2Col = warpN * N;
     //The block size is 128*4, while the tiles are 16*32,each thread extract an element
-    for (int KTileIndex = 0; KTileIndex < mat1->colcount; KTileIndex += K * 4) {
+    for (int KTileIndex = 0; KTileIndex < mat1->colcount; KTileIndex += (K * 4)) {
 
         //copy into shapes : 16 * 32 : 32 * 16
         unsigned int copyX1 = threadIdx.x % 32;
@@ -152,9 +145,23 @@ __global__ void crossTilingWMMA(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2, 
         __syncthreads();
 
         for (int kIndex = 0; kIndex < 4 * K; kIndex+=K){
-            wmma::load_matrix_sync(A, tileMat1 + kIndex, 32);
-            wmma::load_matrix_sync(B, tileMat2 + kIndex * 16, 16);
-            wmma::mma_sync(CAccu, A, B, CAccu);
+            if (mat1Row < mat1->rowcount &&  kIndex + KTileIndex < mat1->colcount && KTileIndex + kIndex < mat2->rowcount &&
+                mat2Col < mat2->colcount) {
+                wmma::load_matrix_sync(A, tileMat1 + kIndex, 32);
+                wmma::load_matrix_sync(B, tileMat2 + kIndex * 16, 16);
+
+                #pragma unroll
+                for (float &t: A.x) {
+                    t = wmma::__float_to_tf32(t);
+                }
+
+                #pragma unroll
+                for (float &t: B.x) {
+                    t = wmma::__float_to_tf32(t);
+                }
+
+                wmma::mma_sync(CAccu, A, B, CAccu);
+            }
         }
     }
     unsigned int resultRow = mat1Row;
@@ -172,7 +179,6 @@ __global__ void crossP(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2, Matrix::M
         currentValue += mat1->get(row, i) *
                         mat2->get(i, col);
     }
-
     result->set(row, col, currentValue);
 }
 
