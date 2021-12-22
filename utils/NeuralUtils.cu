@@ -117,13 +117,13 @@ __global__ void softmaxControlled1024(int n, const float* src, float* dist){
 }
 
 //store every exponents in the buffer
-__global__ void softMaxPrepare(int n, float* buffer){
+__global__ void softMaxPrepare(unsigned int n, float* buffer){
     unsigned int globalID = threadIdx.x + blockIdx.x * blockDim.x;
     if(globalID < n) buffer[globalID] = exp(buffer[globalID]);
 }
 
 //execute reduction like normally
-__global__ void softMaxReduce(int n, float* buffer){
+__global__ void softMaxReduce(unsigned int n, float* buffer){
     unsigned int globalID = threadIdx.x + blockIdx.x * blockDim.x;
     unsigned int warpID = globalID % WARP_SIZE;
     float val = globalID < n ? buffer[globalID] : 0;
@@ -133,7 +133,7 @@ __global__ void softMaxReduce(int n, float* buffer){
 }
 
 //use the result on the elements
-__global__ void softMaxActivate(int n, const float* buffer, float* dist){
+__global__ void softMaxActivate(unsigned int n, const float* buffer, float* dist){
     unsigned int globalID = threadIdx.x + blockIdx.x * blockDim.x;
     if(globalID < n)
     dist[globalID] = exp(dist[globalID]) / buffer[0];
@@ -236,7 +236,7 @@ Matrix::Matrix2d *NeuralUtils::callLeakyReluActivation(Matrix::Matrix2d *mat1, M
 //call the softmax activation
 Matrix::Matrix2d *NeuralUtils::callSoftMax(Matrix::Matrix2d *mat1, Matrix::Matrix2d *result, float* buffer) {
     assert(mat1->rowcount * mat1->colcount == result->rowcount * result->colcount);
-    int n =  mat1->rowcount * mat1->colcount;
+    unsigned int n =  mat1->rowcount * mat1->colcount;
     unsigned int gridSize = n/ (CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y) + 1;
     unsigned int blockSize = CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y;
     if(n <= 1024) {
@@ -248,7 +248,7 @@ Matrix::Matrix2d *NeuralUtils::callSoftMax(Matrix::Matrix2d *mat1, Matrix::Matri
     cudaMemcpy(buffer, mat1->elements, sizeof(float) *n, cudaMemcpyDeviceToDevice);
     softMaxPrepare<<<gridSize, blockSize>>>(n, buffer);
     cudaDeviceSynchronize();
-    int procSize = n;
+    unsigned int procSize = n;
     while(procSize/WARP_SIZE > 0){
         softMaxReduce<<<gridSize, blockSize>>>(procSize, buffer);
         procSize = procSize%WARP_SIZE ? procSize/WARP_SIZE + 1 : procSize/WARP_SIZE;
@@ -265,7 +265,7 @@ Matrix::Matrix2d *
 NeuralUtils::callSoftMaxDerivatives(Matrix::Matrix2d *mat1, Matrix::Matrix2d *correctOut, Matrix::Matrix2d *result) {
     assert(mat1->rowcount == correctOut->rowcount && mat1->rowcount == result->rowcount);
     assert(mat1->colcount == 1 && result->colcount == 1 && correctOut->colcount==1);
-    int n =  mat1->rowcount;
+    unsigned int n =  mat1->rowcount;
     unsigned int gridSize = n/ (CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y) + 1;
     unsigned int blockSize = CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y;
     softMaxDerivative<<<gridSize, blockSize>>>(mat1, correctOut, result);
@@ -274,7 +274,7 @@ NeuralUtils::callSoftMaxDerivatives(Matrix::Matrix2d *mat1, Matrix::Matrix2d *co
 }
 
 Matrix::Matrix2d *NeuralUtils::callSoftMaxCost(Matrix::Matrix2d *mat1,Matrix::Matrix2d *correctOut, Matrix::Matrix2d *result) {
-    int n =  mat1->rowcount;
+    unsigned int n =  mat1->rowcount;
     unsigned int gridSize = n/ (CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y) + 1;
     unsigned int blockSize = CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y;
     softMaxCost<<<gridSize, blockSize>>>(mat1, correctOut, result);

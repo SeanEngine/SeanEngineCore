@@ -11,53 +11,24 @@
 #include <random>
 
 int readDataset(const string& path0, vector<Matrix::Matrix2d*>* data, vector<Matrix::Matrix2d*>* label,
-                 DenseMLP::Config cfg, int labelIndex, int count) {
-    string* paths;
-    vector<Matrix::Matrix2d *> buf;
-    unsigned char* buffer;
-    unsigned char* bufCuda;
+                 DenseMLP::Config cfg, int labelIndex) {
+
     vector<string> temp = Reader::getDirFiles(path0);
+    for(int i=0; i < temp.size(); i++){
+        Matrix::Matrix2d* labelElement;
+        cudaMallocHost((void**)&labelElement, sizeof(Matrix::Matrix2d));
+        Matrix::callAllocElementD(labelElement, cfg.OUTPUT_SIZE,1);
+        Matrix::callAllocZero(labelElement);
 
-    cudaMallocHost((void**)&paths, sizeof(string)*temp.size());
-    cudaMallocHost((void**)&buffer, sizeof(char)*cfg.CPU_THREADS*cfg.BMP_READ_SIZE);
-    cudaMalloc((void**)&bufCuda, sizeof(char)*cfg.CPU_THREADS*cfg.BMP_READ_SIZE);
-    for(int i=1; i< temp.size(); ++i){
-        paths[i-1] = temp[i];
+        Matrix::Matrix2d* dataElement;
+        cudaMallocHost(&dataElement, sizeof(Matrix::Matrix2d));
+        Matrix::callAllocElementD(dataElement, cfg.INPUT_SIZE_X, cfg.INPUT_SIZE_X);
+
+        labelElement->setH2D(labelIndex, 1.0f);
+        label->push_back(labelElement);
+        data->push_back(dataElement);
     }
-
-    for (int i=0;i< temp.size();i++) {
-
-        Matrix::Matrix2d* matData;
-        cudaMallocHost(&matData,sizeof(Matrix::Matrix2d));
-        Matrix::callAllocElementH(matData, cfg.INPUT_SIZE_X, cfg.INPUT_SIZE_X);
-        Matrix::Matrix2d* matLabel;
-
-        cudaMallocHost(&matLabel,sizeof(Matrix::Matrix2d));
-        Matrix::callAllocElementH(matLabel, cfg.OUTPUT_SIZE,1);
-        Matrix::callAllocZero(matLabel);
-        matLabel->elements[labelIndex] = 1.0f;
-
-        (*label).push_back(matLabel);
-        (*data).push_back(matData);
-    }
-
-    for (int i=0;i< cfg.CPU_THREADS;i++) {
-        Matrix::Matrix2d* matT;
-        cudaMallocHost(&matT,sizeof(Matrix::Matrix2d));
-        Matrix::callAllocElementD(matT, cfg.INPUT_SIZE_X, cfg.INPUT_SIZE_X);
-        buf.push_back(matT);
-    }
-    int index = 0;
-    while(index < temp.size()){
-        int threads = temp.size()-index < cfg.CPU_THREADS ? (int)temp.size()-index : cfg.CPU_THREADS;
-        Reader::readBMPFiles(threads, paths, cfg.BMP_READ_SIZE, buffer, bufCuda, data, &buf, Reader::READ_GRAY, index, count);
-        index+=cfg.CPU_THREADS;
-    }
-
-    cudaFreeHost(buffer);
-    cudaFreeHost(paths);
-    cudaFree(bufCuda);
-
+    Reader::readImgGray(cfg.CPU_THREADS, dim3i(cfg.INPUT_SIZE_X,cfg.INPUT_SIZE_X), &temp, data);
     logInfo("DATASET > read " + to_string(temp.size())+ " files for label : " + to_string(labelIndex));
     return (int)temp.size();
 }
@@ -99,7 +70,7 @@ void DenseMLP::loadDataSet() {
      string path0 = DenseMLP::cfg.TRAIN_DATA_PATH;
      int count = 0;
      for(int i=0; i< 10; i++){
-         count += readDataset(path0 + "\\" + to_string(i), &dataset, &labelSet, cfg, i, count);
+         count += readDataset(path0 + "\\" + to_string(i), &dataset, &labelSet, cfg, i);
      }
 
     for (int i=0; i< cfg.TRAIN_BATCH_SIZE; i++){
@@ -145,15 +116,8 @@ void DenseMLP::train() {
         correctOut->nodes = labelBatch[trial];
         //calculate cost
         costBuffer = softMaxL(layers[layers.size()-1]->nodes, labelBatch[trial], costBuffer);
-        cout<<"========="<<endl;
         float cost = sumH(costBuffer);
-        Matrix::inspect(costBuffer);
-        cout<<endl;
-        Matrix::inspect(layers[layers.size()-1]->nodes);
-        cout<<endl;
-        Matrix::inspect(((SoftmaxLayer*)layers[layers.size()-1])->z);
         pastCost+=cost;
-        cout<<cost<<" "<<endl;
 
         //calculate correction
         int maxIndex1 = 0, maxIndex2 = 0;

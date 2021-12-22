@@ -8,6 +8,8 @@
 #include "execution/ThreadControls.h"
 #include "models/DenseMLP.cuh"
 #include "layers/DenseLayer.cuh"
+#include <opencv2/opencv.hpp>
+#include <opencv2/imgcodecs.hpp>
 
 #pragma comment(lib, "cublas.lib")
 

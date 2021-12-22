@@ -7,34 +7,37 @@
 #include <iostream>
 #include <io.h>
 #include "../utils/logger.cuh"
+#include "../utils/Matrix.cuh"
 
-__global__ void genMat(Matrix::Matrix2d* target, const unsigned char* buffer){
-    int row = threadIdx.y + blockIdx.y * blockDim.y;
-    int col = threadIdx.x + blockIdx.x * blockDim.x;
-    int index = (row*target->colcount) + col;
-    unsigned char r = buffer[54 + index*3];
-    unsigned char g = buffer[54 + index*3+1];
-    unsigned char b = buffer[54 + index*3+2];
-    target->set(row, col, static_cast<float>((int)r+(int)g+(int)b) / (256.0F * 3.0F));
+__global__ void genMat(Matrix::Matrix2d* target, const uchar* in){
+    unsigned int row = blockIdx.y * blockDim.y + threadIdx.y;
+    unsigned int col = blockIdx.x * blockDim.x + threadIdx.x;
+    float value = row<target->rowcount && col<target->colcount ? (float)(in[row * target->colcount + col]) : 0.0f;
+    target->set(row, col, value / 256.0f);
 }
 
-void BMPProc(vector<void*>* args, dim3i blockSize, dim3i threadId, int* executionFlags){
-    int readSize = *(int*)(*args)[0];
-    auto* readBuffer = (unsigned char*)(*args)[1] + threadId.x * readSize;
-    auto* bufCuda = (unsigned char*)(*args)[2] + threadId.x * readSize;
-    auto* output =  ( vector<Matrix::Matrix2d *>*)(*args)[3];
-    auto* outputBuf = ( vector<Matrix::Matrix2d *>*)(*args)[4];
+void ImgProcGray(vector<void*>* args, dim3i blockSize, dim3i threadId, int* executionFlags){
+    auto* bytesBuf = (uchar*)(*args)[3];
+    auto* dataset = (vector<Matrix::Matrix2d*>*)(*args)[2];
+    vector<string> filenames = *(vector<string>*)(*args)[1];
+    dim3i size = *(dim3i*)(*args)[0];
+    int part = (int)filenames.size()/blockSize.x;
+    dim3 gridSize = dim3((size.x + CUDA_BLOCK_SIZE.x - 1) / (CUDA_BLOCK_SIZE.x),
+                         (size.y + CUDA_BLOCK_SIZE.y - 1) / CUDA_BLOCK_SIZE.y);
+    int dataIndex = (int)(dataset->size() - filenames.size());
 
-    Matrix::Matrix2d* dist = (*output)[threadId.x + *(int*)(*args)[5]  + *(int*)(*args)[6]];
-    Matrix::Matrix2d* distBuf = (*outputBuf)[threadId.x];
+    for (int i = threadId.x * part; i < (threadId.x == blockSize.x-1 ? filenames.size()-1 : (threadId.x+1)*part); i++){
+        string target = filenames[i];
+        cv::Mat img = cv::imread(target, cv::IMREAD_GRAYSCALE);
+        assert(!img.empty());
 
-    //assert(dist->rowcount * dist->colcount*4 == (readSize-54));  //match data size
-    dim3 gridSize = dim3((dist->colcount + CUDA_BLOCK_SIZE.x - 1) / CUDA_BLOCK_SIZE.x,
-                         (dist->rowcount + CUDA_BLOCK_SIZE.y - 1) / CUDA_BLOCK_SIZE.y);
-    cudaMemcpy(bufCuda, readBuffer, readSize, cudaMemcpyHostToDevice);
-    genMat<<<gridSize, CUDA_BLOCK_SIZE>>>(distBuf, readBuffer);
-    cudaDeviceSynchronize();
-    cudaMemcpy(dist->elements, distBuf->elements, dist->colcount*dist->rowcount*sizeof(float), cudaMemcpyDeviceToHost);
+        uchar* proc = bytesBuf + size.x * size.y * threadId.x;
+        cudaMemcpy(proc, img.data, sizeof(uchar) * size.x * size.y, cudaMemcpyHostToDevice);
+
+        Matrix::Matrix2d* mat1 = (*dataset)[dataIndex + i];
+        genMat<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1,proc);
+        cudaDeviceSynchronize();
+    }
 }
 
 void readFunc(vector<void*>* args, dim3i blockSize, dim3i threadId, int* executionFlags){
@@ -54,29 +57,12 @@ unsigned char *Reader::readBytes(int fileCount, string* fileNames, int size, uns
     return buffer;
 }
 
-/**
- * The method for read the .bmp files
- * @param threads The amount of threads
- * @param fileNames The memory pointer that stores all the file names
- * @param size The size of each file that is going to be read
- * @param buffer The buffer on host memory (size equal to threads * size)
- * @param bufCuda The buffer on device memory (same size as buffer)
- * @param dataset The vec that stores all matrix (initialized)
- * @param outputBuf The vec that stores the matrix on device memory (size equal to threads)
- * @param status the method of reading (RGB or GRAY)
- * @param offset the offset of reading (equal to threads * the index of iteration)
- * @param offsetVec (optional) the total amount of files read in the previous iterations
- */
-void Reader::readBMPFiles(int threads, string *fileNames, int size, unsigned char *buffer, unsigned char *bufCuda,
-                          vector<Matrix::Matrix2d *>* dataset, vector<Matrix::Matrix2d *>* outputBuf,
-                          Status status, int offset, int offsetVec) {
-    buffer = readBytes(threads, fileNames + offset, size, buffer);
-
-    vector<void*> params = __pack(7, &size, buffer, bufCuda, dataset, outputBuf, &offset, &offsetVec);
-    switch (status) {
-        case READ_RGB:break;
-        case READ_GRAY:__allocSynced(dim3i(threads, 1), BMPProc, &params);break;
-    }
+void Reader::readImgGray(int threads, dim3i size, vector<string>* fileNames, vector<Matrix::Matrix2d *>* dataset) {
+    uchar* bytesBuf;
+    cudaMalloc(&bytesBuf, sizeof(uchar) * size.x * size.y * threads);
+    vector<void*> params = __pack(4, &size, fileNames, dataset, bytesBuf);
+    __allocSynced(dim3i(threads, 1), ImgProcGray, &params);
+    cudaFree(bytesBuf);
 }
 
 vector<string> Reader::getDirFiles(const string& path0) {
@@ -87,6 +73,7 @@ vector<string> Reader::getDirFiles(const string& path0) {
 
     if ((hFile = _findfirst(p.assign(path0).append("\\*").c_str(), &fileInfo)) != -1){
         while (_findnext(hFile, &fileInfo) == 0){
+            if(string(fileInfo.name) == "." || string(fileInfo.name) == "..") continue;
             temp.push_back(p.assign(path0).append("\\").append(fileInfo.name));
         }
     }
