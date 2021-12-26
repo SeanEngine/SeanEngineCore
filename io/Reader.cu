@@ -26,7 +26,7 @@ void ImgProcGray(vector<void*>* args, dim3i blockSize, dim3i threadId, int* exec
                          (size.y + CUDA_BLOCK_SIZE.y - 1) / CUDA_BLOCK_SIZE.y);
     int dataIndex = (int)(dataset->size() - filenames.size());
 
-    for (int i = threadId.x * part; i < (threadId.x == blockSize.x-1 ? filenames.size()-1 : (threadId.x+1)*part); i++){
+    for (int i = threadId.x * part; i < (threadId.x == blockSize.x-1 ? filenames.size() : (threadId.x+1)*part); i++){
         string target = filenames[i];
         cv::Mat img = cv::imread(target, cv::IMREAD_GRAYSCALE);
         assert(!img.empty());

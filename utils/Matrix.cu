@@ -53,7 +53,7 @@ __global__ void allocRandom(long seed, Matrix::Matrix2d *mat1) {
     unsigned int row = threadIdx.y + blockIdx.y * blockDim.y;
     unsigned int col = threadIdx.x + blockIdx.x * blockDim.x;
     curand_init((row + 1) * (col + 1) * seed, 0, 0, &state);
-    mat1->set(row, col, static_cast<float>((curand_uniform(&state) * 2.0F) - 1.0F));
+    mat1->set(row, col, static_cast<float>((curand_uniform(&state)) - 0.5F));
 }
 
 //zero fill

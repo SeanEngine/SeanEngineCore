@@ -22,7 +22,7 @@ public:
         char* TRAIN_LABEL_PATH;
 
         int TRAIN_BATCH_SIZE = 100;
-        float LEARNING_RATE = 0.5f;
+        float LEARNING_RATE = 0.02f;
         bool LOAD_MODEL_FROM_SAV = false;
     };
 

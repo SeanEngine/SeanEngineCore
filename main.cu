@@ -16,7 +16,7 @@
 using namespace std;
 using namespace nvcuda;
 
-int main(int argc, char **argv) {
+void run(){
 
     auto *model = new DenseMLP();
     model->registerModel();
@@ -53,11 +53,27 @@ int main(int argc, char **argv) {
     }
 
     cout<<success<<endl;
+}
 
-    //Matrix::inspect(((DenseLayer*)(model->layers[3]))->errors);
-    //Matrix::inspect(((DenseLayer*)(model->layers[3]))->nodes);
-    //Matrix::inspect(model->dataBatch[model->dataBatch.size()-1]);
-    //Matrix::inspect(model->labelBatch[model->labelBatch.size()-1]);
-    //Matrix::inspect(model->layers[3]->nodes);
+int main(int argc, char **argv) {
 
+    run();
+
+    /*
+    auto *model = new DenseMLP();
+    model->registerModel();
+    model->loadModel();
+    model->loadDataSet();
+
+    Matrix::Matrix2d* mat0 = model->dataset[0];
+    Matrix::Matrix2d* mat1 = model->dataset[1];
+    Matrix::Matrix2d* mat2;
+    cudaMallocHost(&mat2, sizeof(Matrix::Matrix2d));
+    Matrix::callAllocElementD(mat2,28,28);
+    Matrix::inspect(mat0);
+    cout<<endl;
+    Matrix::inspect(mat1);
+    cout<<endl;
+    Matrix::inspect(cross(mat0,mat1,mat2));
+    */
 }
