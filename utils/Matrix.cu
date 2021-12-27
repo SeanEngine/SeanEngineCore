@@ -30,6 +30,41 @@ __device__ void Matrix::Matrix2d::add(unsigned int row, unsigned int col, float 
         this->elements[row * this->colcount + col] += value;
 }
 
+__device__ float Matrix::Matrix3d::get(unsigned int depth, unsigned int row, unsigned int col) const {
+    if(row >= rowcount && col >= colcount && depth >= depthCount) return 0.0f;
+    return this->elements[depth * this->rowcount * this->colcount + row * this->colcount + col];
+}
+
+__device__ float Matrix::Matrix3d::get(unsigned int depth, unsigned int offset) const {
+    if(offset >= rowcount * colcount && depth >= depthCount) return 0.0f;
+    return this->elements[depth * this->rowcount * this->colcount + offset];
+}
+
+__device__ void Matrix::Matrix3d::set(unsigned int depth, unsigned int row, unsigned int col, float value) const {
+    if(row < rowcount && col < colcount && depth < depthCount)
+        this->elements[depth * this->rowcount * this->colcount + row * this->colcount + col] = value;
+}
+
+__device__ void Matrix::Matrix3d::set(unsigned int depth, unsigned int offset, float value) const {
+    if(offset < rowcount * colcount && depth < depthCount)
+         this->elements[depth * this->rowcount * this->colcount + offset] = value;
+}
+
+__device__ void Matrix::Matrix3d::add(unsigned int depth, unsigned int row, unsigned int col, float value) const  {
+    if(row < rowcount && col < colcount && depth < depthCount)
+        this->elements[depth * this->rowcount * this->colcount + row * this->colcount + col] += value;
+}
+
+__host__ void Matrix::Matrix3d::extract2d(unsigned int depth, Matrix2d* mat) const {
+    assert(mat->rowcount == rowcount && mat->colcount == colcount && depth < depthCount);
+    cudaMemcpy(mat->elements, elements + depth * rowcount * colcount, sizeof(float) * rowcount * colcount, cudaMemcpyDeviceToDevice);
+}
+
+__host__ void Matrix::Matrix3d::emplace2d(unsigned int depth, Matrix::Matrix2d *mat) const {
+    assert(mat->rowcount == rowcount && mat->colcount == colcount && depth < depthCount);
+    cudaMemcpy(elements + depth * rowcount * colcount, mat->elements, sizeof(float) * rowcount * colcount, cudaMemcpyDeviceToDevice);
+}
+
 __global__ void setVal(Matrix::Matrix2d *mat1, unsigned int row, unsigned int col, float value) {
     mat1->set(row, col, value);
 }
@@ -751,5 +786,3 @@ __host__ float Matrix::Matrix2d::getH2D(unsigned int row, unsigned int col) cons
     cudaFreeHost(temp);
     return output;
 }
-
-

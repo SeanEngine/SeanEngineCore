@@ -47,10 +47,19 @@ public:
     };
 
     struct Matrix3d{
+        unsigned int depthCount;
         unsigned int rowcount;
         unsigned int colcount;
-        unsigned int depth;
         float* elements;
+
+        __device__ float get(unsigned int depth, unsigned int row, unsigned int col) const;
+        __device__ float get(unsigned int depth, unsigned int offset) const;
+        __device__ void set(unsigned int depth, unsigned int row, unsigned int col, float value) const;
+        __device__ void set(unsigned int depth, unsigned int offset, float value) const;
+        __device__ void add(unsigned int depth, unsigned int row, unsigned int col, float value) const;
+
+        __host__ void extract2d(unsigned int depth, Matrix2d* mat) const;
+        __host__ void emplace2d(unsigned int depth, Matrix2d* mat) const;
     };
 
     //faster calculation methods

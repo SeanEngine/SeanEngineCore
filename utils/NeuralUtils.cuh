@@ -12,6 +12,7 @@
  */
 static const float RELU_ALPHA = 0.01f;
 static const int CUDA_SOFTMAX_BLOCK = 1024;
+static const int CONV_SIZE = 3;
 class NeuralUtils {
 public:
     //activation methods
@@ -25,6 +26,10 @@ public:
     static Matrix::Matrix2d* callSoftMax(Matrix::Matrix2d* mat1, Matrix::Matrix2d* result,  float* buffer);
     static Matrix::Matrix2d* callSoftMaxDerivatives(Matrix::Matrix2d* mat1, Matrix::Matrix2d* correctOut, Matrix::Matrix2d* result);
     static Matrix::Matrix2d* callSoftMaxCost(Matrix::Matrix2d* mat1,Matrix::Matrix2d *correctOut, Matrix::Matrix2d* result);
+
+    //conv
+    static Matrix::Matrix3d* callConv2d(Matrix::Matrix3d *mat1, Matrix::Matrix3d *filter, Matrix::Matrix3d *result, unsigned int stride,
+                                        Matrix::Matrix2d* filterBuffer, Matrix::Matrix2d* featureBuffer);
 };
 
 static Matrix::Matrix2d* sigmoid(Matrix::Matrix2d* mat1, Matrix::Matrix2d* result){
