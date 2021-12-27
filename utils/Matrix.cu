@@ -237,10 +237,11 @@ __global__ void crossCompOpt(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2, Mat
         }
         __syncthreads();
 
-#pragma unroll
+         #pragma unroll
         for (int row = 0; row < TILE_SIZE; row++) {
             //pick a value of mat2 and put it into the registers
             mat2Value = mat2->get(tileId * TILE_SIZE + row, resultCol);
+            #pragma unroll
             for (int bufId = 0; bufId < TILE_SIZE; bufId++) {
                 resultBuffer[bufId] += mat1Tile[row][bufId] * mat2Value;
             }
@@ -261,30 +262,33 @@ __global__ void crossPrefetching(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2,
     float mat2Value = 0.0f;
     float resultBuffer[TILE_SIZE] = {0};
 
+    float *cur = mat1Tile;
+    float *next = mat1TileNext;
+
     unsigned int resultCol = VECTOR_SIZE * TILE_SIZE * blockIdx.x + threadIdx.y * TILE_SIZE + threadIdx.x;
+    #pragma unroll
     for (int i = 0; i < TILE_SIZE / VECTOR_SIZE; i++) {
         //transposeOperation the matrix segment
-        mat1Tile[threadIdx.x * TILE_SIZE + i * VECTOR_SIZE + threadIdx.y] = mat1->
+        cur[threadIdx.x * TILE_SIZE + i * VECTOR_SIZE + threadIdx.y] = mat1->
                 get(blockIdx.y * TILE_SIZE + i * VECTOR_SIZE + threadIdx.y, threadIdx.x);
     }
     __syncthreads();
 
-    float *cur = mat1Tile;
-    float *next = mat1TileNext;
-
     for (int tileId = 0; tileId < (mat1->colcount + TILE_SIZE - 1) / TILE_SIZE; tileId++) {
-        if ((tileId + 1) * TILE_SIZE < mat1->colcount) {
+        if ((tileId + 1) * TILE_SIZE < mat1->colcount + TILE_SIZE - 1) {
+            #pragma unroll
             for (int i = 0; i < TILE_SIZE / VECTOR_SIZE; i++) {
                 //transposeOperation the matrix segment
                 next[threadIdx.x * TILE_SIZE + i * VECTOR_SIZE + threadIdx.y] = mat1->
-                        get(blockIdx.y * TILE_SIZE + i * VECTOR_SIZE + threadIdx.y, tileId * TILE_SIZE + threadIdx.x);
+                        get(blockIdx.y * TILE_SIZE + i * VECTOR_SIZE + threadIdx.y, (tileId+1) * TILE_SIZE + threadIdx.x);
             }
         }
 
-#pragma unroll
+        #pragma unroll
         for (int row = 0; row < TILE_SIZE; row++) {
             //pick a value of mat2 and put it into the registers
             mat2Value = mat2->get(tileId * TILE_SIZE + row, resultCol);
+            #pragma unroll
             for (int bufId = 0; bufId < TILE_SIZE; bufId++) {
                 resultBuffer[bufId] += cur[row * TILE_SIZE + bufId] * mat2Value;
             }
@@ -292,11 +296,12 @@ __global__ void crossPrefetching(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2,
         __syncthreads();
 
         //swap the pointers
-        auto tmp = cur;
+        auto* tmp = cur;
         cur = next;
         next = tmp;
     }
     unsigned int resultRow0 = blockIdx.y * TILE_SIZE;
+    #pragma unroll
     for (int bufId = 0; bufId < TILE_SIZE; bufId++) {
         result->set(resultRow0 + bufId, resultCol, resultBuffer[bufId]);
     }
@@ -311,6 +316,7 @@ __global__ void crossPrefetchingA(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2
     float resultBuffer[TILE_SIZE] = {0};
 
     unsigned int resultCol = VECTOR_SIZE * TILE_SIZE * blockIdx.x + threadIdx.y * TILE_SIZE + threadIdx.x;
+    #pragma unroll
     for (int i = 0; i < TILE_SIZE / VECTOR_SIZE; i++) {
         //transposeOperation the matrix segment
         mat1Tile[threadIdx.x * TILE_SIZE + i * VECTOR_SIZE + threadIdx.y] = mat1->
@@ -323,14 +329,15 @@ __global__ void crossPrefetchingA(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2
 
     for (int tileId = 0; tileId < (mat1->colcount + TILE_SIZE - 1) / TILE_SIZE; tileId++) {
         if ((tileId + 1) * TILE_SIZE < mat1->colcount) {
+            #pragma unroll
             for (int i = 0; i < TILE_SIZE / VECTOR_SIZE; i++) {
                 //transposeOperation the matrix segment
                 next[threadIdx.x * TILE_SIZE + i * VECTOR_SIZE + threadIdx.y] = mat1->
-                        get(blockIdx.y * TILE_SIZE + i * VECTOR_SIZE + threadIdx.y, tileId * TILE_SIZE + threadIdx.x);
+                        get(blockIdx.y * TILE_SIZE + i * VECTOR_SIZE + threadIdx.y, (tileId+1) * TILE_SIZE + threadIdx.x);
             }
         }
 
-#pragma unroll
+        #pragma unroll
         for (int row = 0; row < TILE_SIZE; row++) {
             //pick a value of mat2 and put it into the registers
             mat2Value = mat2->get(tileId * TILE_SIZE + row, resultCol);
@@ -341,11 +348,12 @@ __global__ void crossPrefetchingA(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2
         __syncthreads();
 
         //swap the pointers
-        auto tmp = cur;
+        auto *tmp = cur;
         cur = next;
         next = tmp;
     }
     unsigned int resultRow0 = blockIdx.y * TILE_SIZE;
+    #pragma unroll
     for (int bufId = 0; bufId < TILE_SIZE; bufId++) {
         result->add(resultRow0 + bufId, resultCol, resultBuffer[bufId]);
     }

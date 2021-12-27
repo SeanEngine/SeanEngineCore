@@ -96,8 +96,8 @@ public:
 };
 
 //method that does not need the class name (for clarity)
-static Matrix::Matrix2d* cross(Matrix::Matrix2d* mat1, Matrix::Matrix2d* mat2, Matrix::Matrix2d* result){
-    return Matrix::callCrossPOLD(mat1,mat2,result);
+static Matrix::Matrix2d* cross(Matrix::Matrix2d* mat1, Matrix::Matrix2d* mat2, Matrix::Matrix2d* result) {
+    return Matrix::callCrossPrefetching(mat1, mat2, result);
 }
 
 static Matrix::Matrix2d* crossA(Matrix::Matrix2d* mat1, Matrix::Matrix2d* mat2, Matrix::Matrix2d* result){
