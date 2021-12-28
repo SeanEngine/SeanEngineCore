@@ -31,7 +31,7 @@ __device__ void Matrix::Matrix2d::add(unsigned int row, unsigned int col, float 
 }
 
 __device__ float Matrix::Matrix3d::get(unsigned int depth, unsigned int row, unsigned int col) const {
-    if(row >= rowcount && col >= colcount && depth >= depthCount) return 0.0f;
+    if(row >= rowcount && col >= colcount && depth >= depthCount) return 0.5f;
     return this->elements[depth * this->rowcount * this->colcount + row * this->colcount + col];
 }
 
@@ -476,6 +476,19 @@ void Matrix::callAllocElementD(Matrix::Matrix2d *mat1, unsigned int row, unsigne
     cudaMalloc(reinterpret_cast<void **>(&mat1->elements), row * col * sizeof(float));
 }
 
+void Matrix::callAllocElementH(Matrix3d *mat1, unsigned int depth, unsigned int row, unsigned int col) {
+    mat1->rowcount = row;
+    mat1->colcount = col;
+    mat1->depthCount = depth;
+    cudaMallocHost(reinterpret_cast<void **>(&mat1->elements), row * col * depth * sizeof(float));
+}
+
+void Matrix::callAllocElementD(Matrix3d *mat1, unsigned int depth, unsigned int row, unsigned int col) {
+    mat1->rowcount = row;
+    mat1->colcount = col;
+    mat1->depthCount = depth;
+    cudaMalloc(reinterpret_cast<void **>(&mat1->elements), row * col * depth * sizeof(float));
+}
 
 void Matrix::callAllocRandom(Matrix::Matrix2d *mat1) {
     LARGE_INTEGER cpuFre;
@@ -694,6 +707,25 @@ void Matrix::inspect(Matrix2d *mat1) {
             std::cout << (*(debug->elements + i * debug->colcount + j)) << " ";
         }
         std::cout << std::endl;
+    }
+    cudaFree(debug->elements);
+    cudaFree(debug);
+}
+
+void Matrix::inspect(Matrix3d *mat1) {
+    Matrix::Matrix3d *debug;
+    cudaGetErrorString(cudaMallocHost((void **) &debug, sizeof(Matrix::Matrix3d)));
+    callAllocElementH(debug, mat1->depthCount, mat1->rowcount, mat1->colcount);
+    cudaMemcpy(debug->elements, mat1->elements, sizeof(float) * debug->depthCount * debug->colcount * debug->rowcount,
+               cudaMemcpyDeviceToHost);
+    for(int d = 0; d < debug->depthCount; d++) {
+        for (int i = 0; i < debug->rowcount; i++) {
+            for (int j = 0; j < debug->colcount; j++) {
+                std::cout << (*(debug->elements + d*debug->rowcount*debug->colcount + i * debug->colcount + j)) << " ";
+            }
+            std::cout << std::endl;
+        }
+        std::cout <<"\n"<< std::endl;
     }
     cudaFree(debug->elements);
     cudaFree(debug);

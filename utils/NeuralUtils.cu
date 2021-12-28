@@ -6,7 +6,6 @@
 #include <cooperative_groups.h>
 #include <cstdio>
 #include <iostream>
-//this will trigger an exception if the condition do not met
 
 __inline__ __device__ float warpReduce(float val) {
     for (int mask = WARP_SIZE >> 1; mask > 0; mask >>= 1) {
@@ -198,21 +197,29 @@ __global__ void convPrepareFilter(Matrix::Matrix3d *filter,  Matrix::Matrix2d* f
     filterBuffer->set(row, col, filter->get(row, position));
 }
 
+//this method generates a patched form of the feature maps
+//see graph 3 on : https://sahnimanas.github.io/post/anatomy-of-a-high-performance-convolution/
 __global__ void convPrepareFeatureMap(Matrix::Matrix3d* featureMaps, Matrix::Matrix2d* featureBuffer,
                                       unsigned int filterSize, unsigned int stride){
     unsigned int col = blockIdx.x * blockDim.x + threadIdx.x;
     unsigned int depth = blockIdx.y * blockDim.y + threadIdx.y;
-    unsigned int filterOffset = filterSize/2;
-    unsigned int applyColCount = (featureMaps->rowcount-filterSize) / stride + 1;
+    if(depth < (featureBuffer->rowcount / (filterSize*filterSize))) {
+        unsigned int filterOffset = filterSize / 2;
+        unsigned int applyColCount = (featureMaps->colcount - filterSize) / stride + 1;
 
-    //set the copying parameters
-    unsigned int convCenterRow = filterOffset + col / applyColCount * stride;
-    unsigned int convCenterCol = filterOffset + col % applyColCount * stride;
+        //set the copying parameters
+        unsigned int convCenterRow = filterOffset + (col / applyColCount) * stride;
+        unsigned int convCenterCol = filterOffset + (col % applyColCount) * stride;
 
-    //copy feature maps to buffer
-    for(unsigned int i=convCenterRow - filterOffset; i <= convCenterRow + filterOffset; i++){
-        for(unsigned int j=convCenterCol - filterOffset; j <= convCenterCol + filterOffset; j++){
-             featureBuffer->set(depth*filterSize*filterSize + i*filterSize+j, col, featureMaps->get(depth,i,j));
+        //copy feature maps to buffer
+#pragma unroll
+        for (int i = 0; i < filterSize; i++) {
+#pragma unroll
+            for (int j = 0; j < filterSize; j++) {
+                // featureMaps->get(depth,i,j)
+                featureBuffer->set(depth*filterSize*filterSize + i*filterSize + j, col,featureMaps->get(
+                        depth,convCenterRow + i - filterOffset,convCenterCol + j - filterOffset));
+            }
         }
     }
 }
@@ -313,26 +320,33 @@ Matrix::Matrix2d *NeuralUtils::callSoftMaxCost(Matrix::Matrix2d *mat1,Matrix::Ma
 Matrix::Matrix3d *
 NeuralUtils::callConv2d(Matrix::Matrix3d *mat1, Matrix::Matrix3d *filter, Matrix::Matrix3d *result, unsigned int stride,
                         Matrix::Matrix2d* filterBuffer, Matrix::Matrix2d* featureBuffer) {
+    //condition check
     assert(mat1->rowcount == mat1->colcount && filter->rowcount==filter->colcount);
-    assert(mat1->rowcount-filter->rowcount % stride == 0);
+    assert((mat1->rowcount-filter->rowcount) % stride == 0);
     assert(filterBuffer->rowcount == filter->depthCount && filterBuffer->colcount == filter->colcount*filter->colcount*mat1->depthCount);
     assert(result->rowcount == (mat1->rowcount-filter->rowcount) / stride + 1);
     assert(result->colcount == result->rowcount && result->depthCount == filter->depthCount);
-    assert(featureBuffer->colcount==filterBuffer->rowcount * filterBuffer->colcount * mat1->depthCount
+    assert(featureBuffer->colcount==result->rowcount * result->colcount
          && featureBuffer->rowcount == filterBuffer->colcount);
 
+    //prepare buffer for gemm operation
     dim3 filterGridSize = dim3((filterBuffer->colcount + CUDA_BLOCK_SIZE.x-1)/CUDA_BLOCK_SIZE.x,
                                (filterBuffer->rowcount + CUDA_BLOCK_SIZE.y-1)/CUDA_BLOCK_SIZE.y);
     dim3 featureGridSize = dim3((featureBuffer->colcount + CUDA_BLOCK_SIZE.x-1)/CUDA_BLOCK_SIZE.x,
                                 (featureBuffer->rowcount/(filter->rowcount * filter->colcount) + CUDA_BLOCK_SIZE.y-1)/ CUDA_BLOCK_SIZE.y);
     convPrepareFilter<<<filterGridSize, CUDA_BLOCK_SIZE>>>(filter, filterBuffer);
     convPrepareFeatureMap<<<featureGridSize, CUDA_BLOCK_SIZE>>>(mat1,featureBuffer, filter->colcount, stride);
+
+    //create a temporary 2d matrix for calling cross product
     Matrix::Matrix2d* tmp;
     cudaMallocHost(&tmp, sizeof(Matrix::Matrix2d));
     tmp->rowcount = filter->depthCount;
     tmp->colcount = featureBuffer->colcount;
     tmp->elements = result->elements;
     cudaDeviceSynchronize();
+
+    //cross
     cross(filterBuffer, featureBuffer, tmp);
+    cudaDeviceSynchronize();
     return result;
 }

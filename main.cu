@@ -34,7 +34,7 @@ void run(){
     for(int trial=0; trial<60000; trial++){
         Matrix::Matrix2d* data = model->dataset[trial];
         Matrix::Matrix2d* label = model->labelSet[trial];
-        model->layers[0]->nodes = flattern(data);
+        model->layers[0]->nodes = flatten(data);
         model->run();
 
         int maxIndex1 = 0, maxIndex2 = 0;

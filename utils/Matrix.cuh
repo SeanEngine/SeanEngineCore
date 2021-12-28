@@ -67,10 +67,14 @@ public:
 
     //debug tools
     static void inspect(Matrix2d *mat1);
+    static void inspect(Matrix3d *mat1);
 
     //memory control and element allocation
     static void callAllocElementH(Matrix2d *mat1, unsigned int row, unsigned int col);
     static void callAllocElementD(Matrix2d *mat1, unsigned int row, unsigned int col);
+    static void callAllocElementH(Matrix3d *mat1, unsigned int depth, unsigned int row, unsigned int col);
+    static void callAllocElementD(Matrix3d *mat1, unsigned int depth, unsigned int row, unsigned int col);
+
     static void callAllocRandom(Matrix2d *mat1);
     static void callAllocZero(Matrix2d *mat1);
     static void callAllocConst(Matrix2d *mat1, float in);
@@ -164,7 +168,7 @@ static float sumC(Matrix::Matrix2d* mat1){
     return sum;
 }
 
-static Matrix::Matrix2d* flattern(Matrix::Matrix2d* in){
+static Matrix::Matrix2d* flatten(Matrix::Matrix2d* in){
     in->rowcount*= in->colcount;
     in->colcount = 1;
     return in;

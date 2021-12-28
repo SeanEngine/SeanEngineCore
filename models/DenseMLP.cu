@@ -106,7 +106,7 @@ void DenseMLP::train() {
     int success=0;
     pastCost=0;
     for (int trial = 0; trial < cfg.TRAIN_BATCH_SIZE; trial++) {
-        layers[0]->nodes = flattern(dataBatch[trial]);
+        layers[0]->nodes = flatten(dataBatch[trial]);
 
         //forward feeding
         for (int i = 1; i < layers.size(); i++) {
