@@ -12,7 +12,7 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 add_executable(CudaNNGen2 main.cu utils/Matrix.cu utils/Matrix.cuh utils/logger.cu utils/logger.cuh layers/Layer.cu
         layers/Layer.cuh layers/DenseLayer.cu layers/DenseLayer.cuh execution/ThreadControls.cpp execution/ThreadControls.h
         engine/Engine.cu engine/Engine.cuh models/Model.cu models/Model.cuh io/Reader.cu io/Reader.cuh models/DenseMLP.cu
-        models/DenseMLP.cuh layers/SoftmaxLayer.cu layers/SoftmaxLayer.cuh utils/NeuralUtils.cu utils/NeuralUtils.cuh)
+        models/DenseMLP.cuh layers/SoftmaxLayer.cu layers/SoftmaxLayer.cuh utils/NeuralUtils.cu utils/NeuralUtils.cuh layers/ConvLayer.cu layers/ConvLayer.cuh)
 target_link_libraries(CudaNNGen2 cublas.lib)
 target_link_libraries(CudaNNGen2 Threads::Threads)
 target_link_libraries(CudaNNGen2 ${OpenCV_LIBS})

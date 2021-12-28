@@ -11,11 +11,13 @@
 #include <ctime>
 #include <mma.h>
 #include <cassert>
+#include <string>
 
 static const dim3 CUDA_BLOCK_SIZE = dim3(16, 16);
 static const unsigned int WARP_SIZE = 32;
 static const unsigned int TILE_SIZE = 16;
 static const unsigned int VECTOR_SIZE = 4;
+using namespace std;
 
 //Mo stands for Matrix Operations
 class Matrix {
@@ -38,12 +40,13 @@ public:
 
         //get the element at the particular location
         __device__ float get(unsigned int row, unsigned int col) const  ;
-        __device__ void set(unsigned int row, unsigned int col, float value) const ;
-        __device__ void add(unsigned int row, unsigned int col, float value) const ;
+        __device__ void set(unsigned int row, unsigned int col, float value) const;
+        __device__ void add(unsigned int row, unsigned int col, float value) const;
 
         __host__ void setH2D(unsigned int row, unsigned int col, float value);
         __host__ void setH2D(unsigned int offset, float value);
         __host__ float getH2D(unsigned int row, unsigned int col) const;
+        __host__ string toString() const;
     };
 
     struct Matrix3d{
@@ -60,6 +63,7 @@ public:
 
         __host__ void extract2d(unsigned int depth, Matrix2d* mat) const;
         __host__ void emplace2d(unsigned int depth, Matrix2d* mat) const;
+        __host__ string toString() const;
     };
 
     //faster calculation methods

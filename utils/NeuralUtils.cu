@@ -212,9 +212,9 @@ __global__ void convPrepareFeatureMap(Matrix::Matrix3d* featureMaps, Matrix::Mat
         unsigned int convCenterCol = filterOffset + (col % applyColCount) * stride;
 
         //copy feature maps to buffer
-#pragma unroll
+        #pragma unroll
         for (int i = 0; i < filterSize; i++) {
-#pragma unroll
+            #pragma unroll
             for (int j = 0; j < filterSize; j++) {
                 // featureMaps->get(depth,i,j)
                 featureBuffer->set(depth*filterSize*filterSize + i*filterSize + j, col,featureMaps->get(
@@ -348,5 +348,6 @@ NeuralUtils::callConv2d(Matrix::Matrix3d *mat1, Matrix::Matrix3d *filter, Matrix
     //cross
     cross(filterBuffer, featureBuffer, tmp);
     cudaDeviceSynchronize();
+    cudaFreeHost(tmp);
     return result;
 }

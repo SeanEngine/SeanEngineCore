@@ -65,6 +65,10 @@ __host__ void Matrix::Matrix3d::emplace2d(unsigned int depth, Matrix::Matrix2d *
     cudaMemcpy(elements + depth * rowcount * colcount, mat->elements, sizeof(float) * rowcount * colcount, cudaMemcpyDeviceToDevice);
 }
 
+__host__ string Matrix::Matrix3d::toString() const {
+    return "(" + to_string(depthCount) + "," + to_string(rowcount) + "," + to_string(colcount) + ")";
+}
+
 __global__ void setVal(Matrix::Matrix2d *mat1, unsigned int row, unsigned int col, float value) {
     mat1->set(row, col, value);
 }
@@ -89,13 +93,6 @@ __global__ void allocRandom(long seed, Matrix::Matrix2d *mat1) {
     unsigned int col = threadIdx.x + blockIdx.x * blockDim.x;
     curand_init((row + 1) * (col + 1) * seed, 0, 0, &state);
     mat1->set(row, col, static_cast<float>((curand_uniform(&state)) - 0.5F));
-}
-
-//zero fill
-__global__ void allocZero(Matrix::Matrix2d *mat1) {
-    unsigned int row = threadIdx.y + blockIdx.y * blockDim.y;
-    unsigned int col = threadIdx.x + blockIdx.x * blockDim.x;
-    mat1->set(row, col, 0.0F);
 }
 
 __global__ void allocConst(Matrix::Matrix2d *mat1, float in) {
@@ -503,10 +500,7 @@ void Matrix::callAllocRandom(Matrix::Matrix2d *mat1) {
 }
 
 void Matrix::callAllocZero(Matrix::Matrix2d *mat1) {
-    dim3 gridSize = dim3((mat1->colcount + CUDA_BLOCK_SIZE.x - 1) / CUDA_BLOCK_SIZE.x,
-                         (mat1->rowcount + CUDA_BLOCK_SIZE.y - 1) / CUDA_BLOCK_SIZE.y);
-    allocZero<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1);
-    cudaDeviceSynchronize();
+    cudaMemset(mat1->elements, 0.0f, sizeof(float)*mat1->colcount * mat1->rowcount);
 }
 
 void Matrix::callAllocConst(Matrix::Matrix2d *mat1, float in) {
@@ -817,4 +811,8 @@ __host__ float Matrix::Matrix2d::getH2D(unsigned int row, unsigned int col) cons
     float output = *temp;
     cudaFreeHost(temp);
     return output;
+}
+
+__host__ string Matrix::Matrix2d::toString() const {
+    return "(" + to_string(rowcount) + "," + to_string(colcount) + ")";
 }

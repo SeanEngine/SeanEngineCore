@@ -9,11 +9,11 @@
 
 class SoftmaxLayer : public DenseLayer{
 public:
+    string getType() override;
+
     SoftmaxLayer(int nodeNumber, int prevNodeNumber, int nextNodeNumber, int layerId)
          : DenseLayer(nodeNumber, prevNodeNumber, nextNodeNumber, layerId) {
     }
-
-    string getType() override;
 
     //this is change to the calculations for softmax activation
     void calcActivate(Matrix::Matrix2d* prevNodes) override;
