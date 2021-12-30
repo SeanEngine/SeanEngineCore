@@ -11,7 +11,7 @@
 class ConvLayer : public Layer{
 public:
      Matrix::Matrix2d* filterBuffer, *featureMapBuffer;
-     Matrix::Matrix3d* paddedFeature, *filters, *output;
+     Matrix::Tensor3d* paddedFeature, *filters, *output;
      string getType() override;
 
      ConvLayer(dim3 filterSize, dim3 featureMapSize, int stride, int layerID) :
@@ -27,9 +27,9 @@ public:
                                        featureMapSize.z);
 
          //register indexes
-         cudaMallocHost(&paddedFeature, sizeof(Matrix::Matrix3d));
-         cudaMallocHost(&filters, sizeof(Matrix::Matrix3d));
-         cudaMallocHost(&output, sizeof(Matrix::Matrix3d));
+         cudaMallocHost(&paddedFeature, sizeof(Matrix::Tensor3d));
+         cudaMallocHost(&filters, sizeof(Matrix::Tensor3d));
+         cudaMallocHost(&output, sizeof(Matrix::Tensor3d));
          cudaMallocHost(&filterBuffer, sizeof(Matrix::Matrix2d));
          cudaMallocHost(&featureMapBuffer, sizeof(Matrix::Matrix2d));
 
@@ -43,6 +43,8 @@ public:
          Matrix::callAllocElementD(filterBuffer, filterSize.z, filterSize.x*filterSize.y*featureMapSize.z);
          Matrix::callAllocElementD(featureMapBuffer,filterSize.x*filterSize.y*featureMapSize.z,
                                    output->rowcount * output->colcount);
+
+         this->nodes->elements = output->elements;
 
          logInfo("Layer register complete : " + to_string(id) + " " + getType() + " " + to_string(NODE_NUMBER));
          logInfo("CONV INFO: filters: " + filters->toString() + " padded features: " + paddedFeature->toString()

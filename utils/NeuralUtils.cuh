@@ -28,8 +28,9 @@ public:
     static Matrix::Matrix2d* callSoftMaxCost(Matrix::Matrix2d* mat1,Matrix::Matrix2d *correctOut, Matrix::Matrix2d* result);
 
     //conv
-    static Matrix::Matrix3d* callConv2d(Matrix::Matrix3d *mat1, Matrix::Matrix3d *filter, Matrix::Matrix3d *result, unsigned int stride,
+    static Matrix::Tensor3d* callConv2d(Matrix::Tensor3d *mat1, Matrix::Tensor3d *filter, Matrix::Tensor3d *result, unsigned int stride,
                                         Matrix::Matrix2d* filterBuffer, Matrix::Matrix2d* featureBuffer);
+    static Matrix::Tensor3d* padding3d(Matrix::Tensor3d *mat1, Matrix::Tensor3d *output, unsigned int padSize);
 };
 
 static Matrix::Matrix2d* sigmoid(Matrix::Matrix2d* mat1, Matrix::Matrix2d* result){
@@ -58,6 +59,11 @@ static Matrix::Matrix2d* softmaxD(Matrix::Matrix2d* mat1, Matrix::Matrix2d* corr
 //calculate the loss of the softmax output
 static Matrix::Matrix2d* softMaxL(Matrix::Matrix2d* mat1, Matrix::Matrix2d* correctOut, Matrix::Matrix2d* result){
     return NeuralUtils::callSoftMaxCost(mat1, correctOut, result);
+}
+
+static Matrix::Tensor3d* conv2D(Matrix::Tensor3d *mat1, Matrix::Tensor3d *filter, Matrix::Tensor3d *result, unsigned int stride,
+                                Matrix::Matrix2d* filterBuffer, Matrix::Matrix2d* featureBuffer){
+    return NeuralUtils::callConv2d(mat1,filter, result, stride, filterBuffer, featureBuffer);
 }
 
 

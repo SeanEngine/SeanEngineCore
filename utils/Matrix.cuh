@@ -14,6 +14,7 @@
 #include <string>
 
 static const dim3 CUDA_BLOCK_SIZE = dim3(16, 16);
+static const dim3 CUDA_BLOCK_SIZE_3D = dim3(16,16,4);
 static const unsigned int WARP_SIZE = 32;
 static const unsigned int TILE_SIZE = 16;
 static const unsigned int VECTOR_SIZE = 4;
@@ -49,7 +50,7 @@ public:
         __host__ string toString() const;
     };
 
-    struct Matrix3d{
+    struct Tensor3d{
         unsigned int depthCount;
         unsigned int rowcount;
         unsigned int colcount;
@@ -71,17 +72,22 @@ public:
 
     //debug tools
     static void inspect(Matrix2d *mat1);
-    static void inspect(Matrix3d *mat1);
+    static void inspect(Tensor3d *mat1);
 
     //memory control and element allocation
     static void callAllocElementH(Matrix2d *mat1, unsigned int row, unsigned int col);
     static void callAllocElementD(Matrix2d *mat1, unsigned int row, unsigned int col);
-    static void callAllocElementH(Matrix3d *mat1, unsigned int depth, unsigned int row, unsigned int col);
-    static void callAllocElementD(Matrix3d *mat1, unsigned int depth, unsigned int row, unsigned int col);
+    static void callAllocElementH(Tensor3d *mat1, unsigned int depth, unsigned int row, unsigned int col);
+    static void callAllocElementD(Tensor3d *mat1, unsigned int depth, unsigned int row, unsigned int col);
 
     static void callAllocRandom(Matrix2d *mat1);
     static void callAllocZero(Matrix2d *mat1);
     static void callAllocConst(Matrix2d *mat1, float in);
+
+    static void callAllocRandom(Tensor3d *mat1);
+    static void callAllocZero(Tensor3d *mat1);
+    static void callAllocConst(Tensor3d *mat1, float in);
+
     static Matrix2d* callCopyD2D(Matrix2d *src, Matrix2d *dist);
     static Matrix2d* callCopyD2H(Matrix2d *src, Matrix2d* dist);
     static Matrix2d* callCopyH2D(Matrix2d *src, Matrix2d* dist);

@@ -25,7 +25,7 @@ void run(){
     model->loadData();
     //Matrix::inspect(((DenseLayer*)(model->layers[1]))->weights);
 
-    for(int i=0; i<1e4; i++) {
+    for(int i=0; i<1e3*3; i++) {
         model->loadData();
         model->train();
     }

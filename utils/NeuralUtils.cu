@@ -190,7 +190,7 @@ __global__ void leakyReluDerivative(Matrix::Matrix2d *mat1, Matrix::Matrix2d *re
     result->set(row, col, x > 0 ? 1 : ALPHA);
 }
 
-__global__ void convPrepareFilter(Matrix::Matrix3d *filter,  Matrix::Matrix2d* filterBuffer) {
+__global__ void convPrepareFilter(Matrix::Tensor3d *filter, Matrix::Matrix2d* filterBuffer) {
     unsigned int row = blockIdx.y * blockDim.y + threadIdx.y;
     unsigned int col = blockIdx.x * blockDim.x + threadIdx.x;
     unsigned int position = col % (unsigned int)pow(filter->rowcount, 2);
@@ -199,7 +199,7 @@ __global__ void convPrepareFilter(Matrix::Matrix3d *filter,  Matrix::Matrix2d* f
 
 //this method generates a patched form of the feature maps
 //see graph 3 on : https://sahnimanas.github.io/post/anatomy-of-a-high-performance-convolution/
-__global__ void convPrepareFeatureMap(Matrix::Matrix3d* featureMaps, Matrix::Matrix2d* featureBuffer,
+__global__ void convPrepareFeatureMap(Matrix::Tensor3d* featureMaps, Matrix::Matrix2d* featureBuffer,
                                       unsigned int filterSize, unsigned int stride){
     unsigned int col = blockIdx.x * blockDim.x + threadIdx.x;
     unsigned int depth = blockIdx.y * blockDim.y + threadIdx.y;
@@ -222,6 +222,13 @@ __global__ void convPrepareFeatureMap(Matrix::Matrix3d* featureMaps, Matrix::Mat
             }
         }
     }
+}
+
+__global__ void pad3d(Matrix::Tensor3d* input, Matrix::Tensor3d* output, unsigned int padSize){
+    unsigned int row = blockIdx.y * blockDim.y + threadIdx.y;
+    unsigned int col = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int depth = blockIdx.z * blockDim.z + threadIdx.z;
+    output->set(depth+padSize, row+padSize, col+padSize, input->get(depth, row, col));
 }
 
 //activations
@@ -317,8 +324,8 @@ Matrix::Matrix2d *NeuralUtils::callSoftMaxCost(Matrix::Matrix2d *mat1,Matrix::Ma
 // filter: rowcount = colcount
 // see : https://sahnimanas.github.io/post/anatomy-of-a-high-performance-convolution/
 //outputDim = (n-f)/s + 1
-Matrix::Matrix3d *
-NeuralUtils::callConv2d(Matrix::Matrix3d *mat1, Matrix::Matrix3d *filter, Matrix::Matrix3d *result, unsigned int stride,
+Matrix::Tensor3d *
+NeuralUtils::callConv2d(Matrix::Tensor3d *mat1, Matrix::Tensor3d *filter, Matrix::Tensor3d *result, unsigned int stride,
                         Matrix::Matrix2d* filterBuffer, Matrix::Matrix2d* featureBuffer) {
     //condition check
     assert(mat1->rowcount == mat1->colcount && filter->rowcount==filter->colcount);
@@ -350,4 +357,17 @@ NeuralUtils::callConv2d(Matrix::Matrix3d *mat1, Matrix::Matrix3d *filter, Matrix
     cudaDeviceSynchronize();
     cudaFreeHost(tmp);
     return result;
+}
+
+//pad zeros around the target
+Matrix::Tensor3d *NeuralUtils::padding3d(Matrix::Tensor3d *mat1, Matrix::Tensor3d *output, unsigned int padSize) {
+    //check condition
+    Matrix::callAllocZero(output);
+    assert(output->rowcount == mat1->rowcount + 2*padSize && output->colcount == mat1->colcount + 2*padSize);
+    dim3 gridSize = dim3((mat1->colcount + CUDA_BLOCK_SIZE_3D.x -1)/CUDA_BLOCK_SIZE_3D.x
+                        ,(mat1->rowcount + CUDA_BLOCK_SIZE_3D.y -1)/CUDA_BLOCK_SIZE_3D.y
+                        ,(mat1->depthCount + CUDA_BLOCK_SIZE_3D.z -1)/CUDA_BLOCK_SIZE_3D.z);
+    pad3d<<<gridSize, CUDA_BLOCK_SIZE_3D>>>(mat1,output,padSize);
+    cudaDeviceSynchronize();
+    return output;
 }
