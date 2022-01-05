@@ -38,9 +38,7 @@ void run(){
         model->run();
 
         int maxIndex1 = 0, maxIndex2 = 0;
-        Matrix::Matrix2d* debug;
-        cudaMallocHost((void**)&debug, sizeof(Matrix::Matrix2d));
-        Matrix::callAllocElementH(debug, 10, 1);
+        auto* debug = Matrix::callAllocElementH(10, 1);
         cudaMemcpy(debug->elements, model->layers[3]->nodes->elements, sizeof(float) * 10, cudaMemcpyDeviceToHost);
         for(int i=0; i< 10; i++) {
             maxIndex1 = debug->elements[i] > debug->elements[maxIndex1] ? i : maxIndex1;

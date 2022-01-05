@@ -28,8 +28,21 @@ public:
     static Matrix::Matrix2d* callSoftMaxCost(Matrix::Matrix2d* mat1,Matrix::Matrix2d *correctOut, Matrix::Matrix2d* result);
 
     //conv
-    static Matrix::Tensor3d* callConv2d(Matrix::Tensor3d *mat1, Matrix::Tensor3d *filter, Matrix::Tensor3d *result, unsigned int stride,
-                                        Matrix::Matrix2d* filterBuffer, Matrix::Matrix2d* featureBuffer);
+    /**
+     * @see{https://sahnimanas.github.io/post/anatomy-of-a-high-performance-convolution/}
+     * This method is for convolution with 4D filters and 3D feature maps
+     * This method only support odd filter size (1x1, 3x3, 5x5,....)
+     * @param mat1  The import feature map with dimensions D * H0 * W0
+     * @param filter The 4D filter with dimensions N * D * K * K
+     * @param result The output with dimensions N * H * W
+     * @param stride The stride for convolution (steps of the filters)
+     * @param filterBuffer an empty initialized Matrix2d object
+     * @param featureBuffer The 2d buffer that stores processed features with Dimensions K^2 * D , H * W
+     * @param outputBuffer an empty initialized Matrix2d object
+     * @return convoluted features
+     */
+    static Matrix::Tensor3d* callConv2d(Matrix::Tensor3d *mat1, Matrix::Tensor4d *filter, Matrix::Tensor3d *result, unsigned int stride,
+                                        Matrix::Matrix2d* filterBuffer, Matrix::Matrix2d* featureBuffer, Matrix::Matrix2d* outputBuffer);
     static Matrix::Tensor3d* padding3d(Matrix::Tensor3d *mat1, Matrix::Tensor3d *output, unsigned int padSize);
 };
 
@@ -61,9 +74,9 @@ static Matrix::Matrix2d* softMaxL(Matrix::Matrix2d* mat1, Matrix::Matrix2d* corr
     return NeuralUtils::callSoftMaxCost(mat1, correctOut, result);
 }
 
-static Matrix::Tensor3d* conv2D(Matrix::Tensor3d *mat1, Matrix::Tensor3d *filter, Matrix::Tensor3d *result, unsigned int stride,
-                                Matrix::Matrix2d* filterBuffer, Matrix::Matrix2d* featureBuffer){
-    return NeuralUtils::callConv2d(mat1,filter, result, stride, filterBuffer, featureBuffer);
+static Matrix::Tensor3d* conv2D(Matrix::Tensor3d *mat1, Matrix::Tensor4d *filter, Matrix::Tensor3d *result, unsigned int stride,
+                                Matrix::Matrix2d* filterBuffer, Matrix::Matrix2d* featureBuffer, Matrix::Matrix2d* outputBuffer){
+    return NeuralUtils::callConv2d(mat1,filter, result, stride, filterBuffer, featureBuffer, outputBuffer);
 }
 
 

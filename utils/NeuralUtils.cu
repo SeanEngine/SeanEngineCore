@@ -8,6 +8,7 @@
 #include <iostream>
 
 __inline__ __device__ float warpReduce(float val) {
+    #pragma unroll
     for (int mask = WARP_SIZE >> 1; mask > 0; mask >>= 1) {
         val += __shfl_xor_sync(0xffffffff, val, mask);
     }
@@ -15,6 +16,7 @@ __inline__ __device__ float warpReduce(float val) {
 }
 
 __inline__ __device__ float warpCompare(float val) {
+    #pragma unroll
     for (int mask = WARP_SIZE >> 1; mask > 0; mask >>= 1) {
         float temp = __shfl_xor_sync(0xffffffff, val, mask);
         val = temp > val ? temp : val;
@@ -175,7 +177,6 @@ __global__ void sigmoidDerivative(Matrix::Matrix2d *mat1, Matrix::Matrix2d *resu
     result->set(row, col, sigmoidCalc(x) * (1.0f - sigmoidCalc(x)));
 }
 
-
 __global__ void leakyReluActivation(Matrix::Matrix2d *mat1, Matrix::Matrix2d *result, float ALPHA) {
     unsigned int row = blockIdx.y * blockDim.y + threadIdx.y;
     unsigned int col = blockIdx.x * blockDim.x + threadIdx.x;
@@ -188,13 +189,6 @@ __global__ void leakyReluDerivative(Matrix::Matrix2d *mat1, Matrix::Matrix2d *re
     unsigned int col = blockIdx.x * blockDim.x + threadIdx.x;
     float x = mat1->get(row, col);
     result->set(row, col, x > 0 ? 1 : ALPHA);
-}
-
-__global__ void convPrepareFilter(Matrix::Tensor3d *filter, Matrix::Matrix2d* filterBuffer) {
-    unsigned int row = blockIdx.y * blockDim.y + threadIdx.y;
-    unsigned int col = blockIdx.x * blockDim.x + threadIdx.x;
-    unsigned int position = col % (unsigned int)pow(filter->rowcount, 2);
-    filterBuffer->set(row, col, filter->get(row, position));
 }
 
 //this method generates a patched form of the feature maps
@@ -325,37 +319,36 @@ Matrix::Matrix2d *NeuralUtils::callSoftMaxCost(Matrix::Matrix2d *mat1,Matrix::Ma
 // see : https://sahnimanas.github.io/post/anatomy-of-a-high-performance-convolution/
 //outputDim = (n-f)/s + 1
 Matrix::Tensor3d *
-NeuralUtils::callConv2d(Matrix::Tensor3d *mat1, Matrix::Tensor3d *filter, Matrix::Tensor3d *result, unsigned int stride,
-                        Matrix::Matrix2d* filterBuffer, Matrix::Matrix2d* featureBuffer) {
+NeuralUtils::callConv2d(Matrix::Tensor3d *mat1, Matrix::Tensor4d *filter, Matrix::Tensor3d *result, unsigned int stride,
+                        Matrix::Matrix2d* filterBuffer, Matrix::Matrix2d* featureBuffer, Matrix::Matrix2d* outputBuffer) {
     //condition check
     assert(mat1->rowcount == mat1->colcount && filter->rowcount==filter->colcount);
+    assert(filter->depthCount == mat1->depthCount);
     assert((mat1->rowcount-filter->rowcount) % stride == 0);
-    assert(filterBuffer->rowcount == filter->depthCount && filterBuffer->colcount == filter->colcount*filter->colcount*mat1->depthCount);
     assert(result->rowcount == (mat1->rowcount-filter->rowcount) / stride + 1);
-    assert(result->colcount == result->rowcount && result->depthCount == filter->depthCount);
-    assert(featureBuffer->colcount==result->rowcount * result->colcount
-         && featureBuffer->rowcount == filterBuffer->colcount);
+    assert(result->colcount == result->rowcount && result->depthCount == filter->wCount);
+
+    assert(featureBuffer->rowcount == filter->depthCount * filter->rowcount * filter->colcount);
+    assert(featureBuffer->colcount == result->rowcount* result->colcount);
 
     //prepare buffer for gemm operation
-    dim3 filterGridSize = dim3((filterBuffer->colcount + CUDA_BLOCK_SIZE.x-1)/CUDA_BLOCK_SIZE.x,
-                               (filterBuffer->rowcount + CUDA_BLOCK_SIZE.y-1)/CUDA_BLOCK_SIZE.y);
     dim3 featureGridSize = dim3((featureBuffer->colcount + CUDA_BLOCK_SIZE.x-1)/CUDA_BLOCK_SIZE.x,
                                 (featureBuffer->rowcount/(filter->rowcount * filter->colcount) + CUDA_BLOCK_SIZE.y-1)/ CUDA_BLOCK_SIZE.y);
-    convPrepareFilter<<<filterGridSize, CUDA_BLOCK_SIZE>>>(filter, filterBuffer);
     convPrepareFeatureMap<<<featureGridSize, CUDA_BLOCK_SIZE>>>(mat1,featureBuffer, filter->colcount, stride);
 
-    //create a temporary 2d matrix for calling cross product
-    Matrix::Matrix2d* tmp;
-    cudaMallocHost(&tmp, sizeof(Matrix::Matrix2d));
-    tmp->rowcount = filter->depthCount;
-    tmp->colcount = featureBuffer->colcount;
-    tmp->elements = result->elements;
+    filterBuffer->rowcount = filter->wCount;
+    filterBuffer->colcount = filter->depthCount * filter->rowcount * filter->colcount;
+    filterBuffer->elements = filter->elements;
+
+    outputBuffer->rowcount = result->depthCount;
+    outputBuffer->colcount = result->rowcount * result->colcount;
+    outputBuffer->elements = result->elements;
+
     cudaDeviceSynchronize();
 
     //cross
-    cross(filterBuffer, featureBuffer, tmp);
+    cross(filterBuffer, featureBuffer, outputBuffer);
     cudaDeviceSynchronize();
-    cudaFreeHost(tmp);
     return result;
 }
 

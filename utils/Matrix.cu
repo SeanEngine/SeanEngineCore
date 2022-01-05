@@ -31,7 +31,7 @@ __device__ void Matrix::Matrix2d::add(unsigned int row, unsigned int col, float 
 }
 
 __device__ float Matrix::Tensor3d::get(unsigned int depth, unsigned int row, unsigned int col) const {
-    if(row >= rowcount && col >= colcount && depth >= depthCount) return 0.5f;
+    if(row >= rowcount && col >= colcount && depth >= depthCount) return 0.0f;
     return this->elements[depth * this->rowcount * this->colcount + row * this->colcount + col];
 }
 
@@ -53,6 +53,16 @@ __device__ void Matrix::Tensor3d::set(unsigned int depth, unsigned int offset, f
 __device__ void Matrix::Tensor3d::add(unsigned int depth, unsigned int row, unsigned int col, float value) const  {
     if(row < rowcount && col < colcount && depth < depthCount)
         this->elements[depth * this->rowcount * this->colcount + row * this->colcount + col] += value;
+}
+
+__device__ float Matrix::Tensor4d::get(unsigned int w, unsigned int depth, unsigned int row, unsigned int col) const {
+    if(row >= rowcount && col >= colcount && depth >= depthCount && w > wCount) return 0.0f;
+    return this->elements[w*depthCount*rowcount*colcount + depth*rowcount*colcount + row*colcount + col];
+}
+
+__device__ void Matrix::Tensor4d::set(unsigned int w, unsigned int depth, unsigned int row, unsigned int col, float value) const {
+    if(row < rowcount && col < colcount && depth < depthCount && w < wCount)
+         this->elements[w*depthCount*rowcount*colcount + depth*rowcount*colcount + row*colcount + col] = value;
 }
 
 __host__ void Matrix::Tensor3d::extract2d(unsigned int depth, Matrix2d* mat) const {
@@ -101,20 +111,16 @@ __global__ void allocConst(Matrix::Matrix2d *mat1, float in) {
     mat1->set(row, col, in);
 }
 
-__global__ void allocRandom(long seed, Matrix::Tensor3d *mat1){
+__global__ void allocRandom(long seed, Matrix::Tensor *mat1){
     curandStateXORWOW_t state;
-    unsigned int row = threadIdx.y + blockIdx.y * blockDim.y;
-    unsigned int col = threadIdx.x + blockIdx.x * blockDim.x;
-    unsigned int depth = threadIdx.z + blockIdx.z * blockDim.z;
-    curand_init((row + 1) * (col + 1) * (depth+1) * seed, 0, 0, &state);
-    mat1->set(depth,row, col, static_cast<float>((curand_uniform(&state)) - 0.5F));
+    unsigned int index = threadIdx.x + blockIdx.x * blockDim.x;
+    curand_init((index+1) * seed, 0, 0, &state);
+    mat1->elements[index] =  static_cast<float>((curand_uniform(&state)) - 0.5F);
 }
 
-__global__ void allocConst(Matrix::Tensor3d* mat1, float in){
-    unsigned int row = threadIdx.y + blockIdx.y * blockDim.y;
-    unsigned int col = threadIdx.x + blockIdx.x * blockDim.x;
-    unsigned int depth = threadIdx.z + blockIdx.z * blockDim.z;
-    mat1->set(depth, row, col, in);
+__global__ void allocConst(Matrix::Tensor* mat1, float in){
+    unsigned int index = threadIdx.x + blockIdx.x * blockDim.x;
+    mat1->elements[index] = in;
 }
 
 #define M 16
@@ -477,30 +483,70 @@ __global__ void insertColumn(Matrix::Matrix2d *mat1, Matrix::Matrix2d *column, u
 //memory Control:
 // ===============================================================
 
-void Matrix::callAllocElementH(Matrix::Matrix2d *mat1, unsigned int row, unsigned int col) {
+Matrix::Matrix2d* Matrix::callAllocElementH(unsigned int row, unsigned int col) {
+    Matrix2d* mat1;
+    cudaMallocHost(&mat1, sizeof(Matrix::Matrix2d));
     mat1->rowcount = row;
     mat1->colcount = col;
     cudaMallocHost(reinterpret_cast<void **>(&mat1->elements), row * col * sizeof(float));
+    return mat1;
 }
 
-void Matrix::callAllocElementD(Matrix::Matrix2d *mat1, unsigned int row, unsigned int col) {
+Matrix::Matrix2d* Matrix::callAllocElementD(unsigned int row, unsigned int col) {
+    Matrix2d* mat1;
+    cudaMallocHost(&mat1, sizeof(Matrix::Matrix2d));
     mat1->rowcount = row;
     mat1->colcount = col;
     cudaMalloc(reinterpret_cast<void **>(&mat1->elements), row * col * sizeof(float));
+    return mat1;
 }
 
-void Matrix::callAllocElementH(Tensor3d *mat1, unsigned int depth, unsigned int row, unsigned int col) {
+Matrix::Tensor3d* Matrix::callAllocElementH(unsigned int depth, unsigned int row, unsigned int col) {
+    Tensor3d *mat1;
+    cudaMallocHost(&mat1, sizeof(Tensor3d));
     mat1->rowcount = row;
     mat1->colcount = col;
     mat1->depthCount = depth;
+    mat1->elementCount = row * col * depth;
     cudaMallocHost(reinterpret_cast<void **>(&mat1->elements), row * col * depth * sizeof(float));
+    return mat1;
 }
 
-void Matrix::callAllocElementD(Tensor3d *mat1, unsigned int depth, unsigned int row, unsigned int col) {
+Matrix::Tensor3d* Matrix::callAllocElementD(unsigned int depth, unsigned int row, unsigned int col) {
+    Tensor3d *mat1;
+    cudaMallocHost(&mat1, sizeof(Tensor3d));
     mat1->rowcount = row;
     mat1->colcount = col;
     mat1->depthCount = depth;
+    mat1->elementCount = row * col * depth;
     cudaMalloc(reinterpret_cast<void **>(&mat1->elements), row * col * depth * sizeof(float));
+    return mat1;
+}
+
+Matrix::Tensor4d* Matrix::callAllocElementH(unsigned int w, unsigned int depth, unsigned int row,
+                               unsigned int col) {
+    Tensor4d *mat1;
+    cudaMallocHost(&mat1, sizeof(Tensor3d));
+    mat1->rowcount = row;
+    mat1->colcount = col;
+    mat1->depthCount = depth;
+    mat1->wCount = w;
+    mat1->elementCount = row * col * depth * w;
+    cudaMallocHost(reinterpret_cast<void **>(&mat1->elements), row * col * depth * w * sizeof(float));
+    return mat1;
+}
+
+Matrix::Tensor4d* Matrix::callAllocElementD(unsigned int w, unsigned int depth, unsigned int row,
+                               unsigned int col) {
+    Tensor4d *mat1;
+    cudaMallocHost(&mat1, sizeof(Tensor3d));
+    mat1->rowcount = row;
+    mat1->colcount = col;
+    mat1->depthCount = depth;
+    mat1->wCount = w;
+    mat1->elementCount = row * col * depth * w;
+    cudaMalloc(reinterpret_cast<void **>(&mat1->elements), row * col * depth * w * sizeof(float));
+    return mat1;
 }
 
 void Matrix::callAllocRandom(Matrix::Matrix2d *mat1) {
@@ -526,28 +572,24 @@ void Matrix::callAllocConst(Matrix::Matrix2d *mat1, float in) {
     cudaDeviceSynchronize();
 }
 
-void Matrix::callAllocRandom(Matrix::Tensor3d *mat1) {
+void Matrix::callAllocRandom(Matrix::Tensor *mat1) {
     LARGE_INTEGER cpuFre;
     LARGE_INTEGER begin;
 
     QueryPerformanceFrequency(&cpuFre);
     QueryPerformanceCounter(&begin);
-    dim3 gridSize = dim3((mat1->colcount + CUDA_BLOCK_SIZE_3D.x - 1) / CUDA_BLOCK_SIZE_3D.x,
-                         (mat1->rowcount + CUDA_BLOCK_SIZE_3D.y - 1) / CUDA_BLOCK_SIZE_3D.y,
-                         (mat1->depthCount + CUDA_BLOCK_SIZE_3D.z - 1)/ CUDA_BLOCK_SIZE_3D.z);
-    allocRandom<<<gridSize, CUDA_BLOCK_SIZE_3D>>>((long) (&begin.QuadPart), mat1);
+    dim3 gridSize = dim3((mat1->elementCount + CUDA_BLOCK_SIZE_3D.x - 1) / CUDA_BLOCK_SIZE_3D.x);
+    allocRandom<<<gridSize, CUDA_BLOCK_SIZE.x*CUDA_BLOCK_SIZE.y>>>((long) (&begin.QuadPart), mat1);
     cudaDeviceSynchronize();
 }
 
-void Matrix::callAllocZero(Matrix::Tensor3d *mat1) {
-    cudaMemset(mat1->elements, 0.0f, sizeof(float)*mat1->colcount * mat1->rowcount * mat1->depthCount);
+void Matrix::callAllocZero(Matrix::Tensor *mat1) {
+    cudaMemset(mat1->elements, 0.0f, sizeof(float)*mat1->elementCount);
 }
 
-void Matrix::callAllocConst(Matrix::Tensor3d *mat1, float in) {
-    dim3 gridSize = dim3((mat1->colcount + CUDA_BLOCK_SIZE_3D.x - 1) / CUDA_BLOCK_SIZE_3D.x,
-                         (mat1->rowcount + CUDA_BLOCK_SIZE_3D.y - 1) / CUDA_BLOCK_SIZE_3D.y,
-                         (mat1->depthCount + CUDA_BLOCK_SIZE_3D.z - 1)/ CUDA_BLOCK_SIZE_3D.z);
-    allocConst<<<gridSize, CUDA_BLOCK_SIZE_3D>>>(mat1, in);
+void Matrix::callAllocConst(Matrix::Tensor *mat1, float in) {
+    dim3 gridSize = dim3((mat1->elementCount + CUDA_BLOCK_SIZE_3D.x - 1) / CUDA_BLOCK_SIZE_3D.x);
+    allocConst<<<gridSize, CUDA_BLOCK_SIZE.x*CUDA_BLOCK_SIZE.y>>>(mat1, in);
     cudaDeviceSynchronize();
 }
 
@@ -731,9 +773,7 @@ Matrix::Matrix2d *Matrix::callTranspose(Matrix::Matrix2d *mat1, Matrix::Matrix2d
 
 //debug tools
 void Matrix::inspect(Matrix2d *mat1) {
-    Matrix::Matrix2d *debug;
-    cudaGetErrorString(cudaMallocHost((void **) &debug, sizeof(Matrix::Matrix2d)));
-    callAllocElementH(debug, mat1->rowcount, mat1->colcount);
+    auto *debug = callAllocElementH(mat1->rowcount, mat1->colcount);
     cudaMemcpy(debug->elements, mat1->elements, sizeof(float) * debug->colcount * debug->rowcount,
                cudaMemcpyDeviceToHost);
     for (int i = 0; i < debug->rowcount; i++) {
@@ -748,8 +788,7 @@ void Matrix::inspect(Matrix2d *mat1) {
 
 void Matrix::inspect(Tensor3d *mat1) {
     Matrix::Tensor3d *debug;
-    cudaGetErrorString(cudaMallocHost((void **) &debug, sizeof(Matrix::Tensor3d)));
-    callAllocElementH(debug, mat1->depthCount, mat1->rowcount, mat1->colcount);
+    debug = callAllocElementH(mat1->depthCount, mat1->rowcount, mat1->colcount);
     cudaMemcpy(debug->elements, mat1->elements, sizeof(float) * debug->depthCount * debug->colcount * debug->rowcount,
                cudaMemcpyDeviceToHost);
     for(int d = 0; d < debug->depthCount; d++) {
@@ -856,3 +895,9 @@ __host__ float Matrix::Matrix2d::getH2D(unsigned int row, unsigned int col) cons
 __host__ string Matrix::Matrix2d::toString() const {
     return "(" + to_string(rowcount) + "," + to_string(colcount) + ")";
 }
+
+__host__ string Matrix::Tensor4d::toString() const {
+    return "(" + to_string(wCount) + "," + to_string(depthCount) + "," + to_string(rowcount) + "," + to_string(colcount) + ")";
+}
+
+dim4::dim4(unsigned int x, unsigned int y, unsigned int z, unsigned int w) : x(x), y(y), z(z), w(w) {}

@@ -15,14 +15,10 @@ int readDataset(const string& path0, vector<Matrix::Matrix2d*>* data, vector<Mat
 
     vector<string> temp = Reader::getDirFiles(path0);
     for(int i=0; i < temp.size(); i++){
-        Matrix::Matrix2d* labelElement;
-        cudaMallocHost((void**)&labelElement, sizeof(Matrix::Matrix2d));
-        Matrix::callAllocElementD(labelElement, cfg.OUTPUT_SIZE,1);
+        auto* labelElement = Matrix::callAllocElementD(cfg.OUTPUT_SIZE,1);
         Matrix::callAllocZero(labelElement);
 
-        Matrix::Matrix2d* dataElement;
-        cudaMallocHost(&dataElement, sizeof(Matrix::Matrix2d));
-        Matrix::callAllocElementD(dataElement, cfg.INPUT_SIZE_X, cfg.INPUT_SIZE_X);
+        auto* dataElement =  Matrix::callAllocElementD(cfg.INPUT_SIZE_X, cfg.INPUT_SIZE_X);
 
         labelElement->setH2D(labelIndex, 1.0f);
         label->push_back(labelElement);
@@ -34,8 +30,7 @@ int readDataset(const string& path0, vector<Matrix::Matrix2d*>* data, vector<Mat
 }
 
 void DenseMLP::registerModel() {
-     cudaMallocHost((void**)&costBuffer, sizeof(Matrix::Matrix2d));
-     Matrix::callAllocElementD(costBuffer, cfg.OUTPUT_SIZE, 1);
+     costBuffer = Matrix::callAllocElementD(cfg.OUTPUT_SIZE, 1);
      logInfo("===========< REGISTERING : DenseMLP >============",0x05);
      layers.push_back(new Layer(784));  //input layer
      layers.push_back(new DenseLayer(128, 784, 16, 1));
@@ -74,12 +69,9 @@ void DenseMLP::loadDataSet() {
      }
 
     for (int i=0; i< cfg.TRAIN_BATCH_SIZE; i++){
-        Matrix::Matrix2d* data, *label;
-        cudaMallocHost((void**)&data, sizeof(Matrix::Matrix2d));
-        cudaMallocHost((void**)&label, sizeof(Matrix::Matrix2d));
-        Matrix::callAllocElementD(data, cfg.INPUT_SIZE_X, cfg.INPUT_SIZE_X);
+        auto* data = Matrix::callAllocElementD( cfg.INPUT_SIZE_X, cfg.INPUT_SIZE_X);
         dataBatch.push_back(data);
-        Matrix::callAllocElementD(label, cfg.OUTPUT_SIZE,1);
+        auto* label = Matrix::callAllocElementD(cfg.OUTPUT_SIZE,1);
         labelBatch.push_back(label);
     }
 }
@@ -121,9 +113,7 @@ void DenseMLP::train() {
 
         //calculate correction
         int maxIndex1 = 0, maxIndex2 = 0;
-        Matrix::Matrix2d* debug;
-        cudaMallocHost((void**)&debug, sizeof(Matrix::Matrix2d));
-        Matrix::callAllocElementH(debug, DenseMLP::cfg.OUTPUT_SIZE, 1);
+        auto* debug = Matrix::callAllocElementH(DenseMLP::cfg.OUTPUT_SIZE, 1);
         cudaMemcpy(debug->elements, layers[3]->nodes->elements, sizeof(float) * cfg.OUTPUT_SIZE, cudaMemcpyDeviceToHost);
         for(int i=0; i< cfg.OUTPUT_SIZE; i++) {
             maxIndex1 = *(debug->elements + i) > *(debug->elements + maxIndex1) ? i : maxIndex1;

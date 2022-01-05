@@ -20,6 +20,15 @@ static const unsigned int TILE_SIZE = 16;
 static const unsigned int VECTOR_SIZE = 4;
 using namespace std;
 
+struct dim4{
+    unsigned int x;
+    unsigned int y;
+    unsigned int z;
+    unsigned int w;
+
+    dim4(unsigned int x, unsigned int y, unsigned int z, unsigned int w);
+};
+
 //Mo stands for Matrix Operations
 class Matrix {
 public:
@@ -50,11 +59,16 @@ public:
         __host__ string toString() const;
     };
 
-    struct Tensor3d{
+    struct Tensor{
+    public:
+        unsigned int elementCount;
+        float* elements;
+    };
+
+    struct Tensor3d : public Tensor{
         unsigned int depthCount;
         unsigned int rowcount;
         unsigned int colcount;
-        float* elements;
 
         __device__ float get(unsigned int depth, unsigned int row, unsigned int col) const;
         __device__ float get(unsigned int depth, unsigned int offset) const;
@@ -67,6 +81,18 @@ public:
         __host__ string toString() const;
     };
 
+    struct Tensor4d : public Tensor{
+        unsigned int wCount;
+        unsigned int depthCount;
+        unsigned int rowcount;
+        unsigned int colcount;
+
+        __device__ float get(unsigned int w, unsigned int depth, unsigned int row, unsigned int col) const;
+        __device__ void set(unsigned int w, unsigned int depth, unsigned int row, unsigned int col, float value) const;
+
+        __host__ string toString() const;
+    };
+
     //faster calculation methods
     static __device__ float fasterSqrt(float in);
 
@@ -75,18 +101,20 @@ public:
     static void inspect(Tensor3d *mat1);
 
     //memory control and element allocation
-    static void callAllocElementH(Matrix2d *mat1, unsigned int row, unsigned int col);
-    static void callAllocElementD(Matrix2d *mat1, unsigned int row, unsigned int col);
-    static void callAllocElementH(Tensor3d *mat1, unsigned int depth, unsigned int row, unsigned int col);
-    static void callAllocElementD(Tensor3d *mat1, unsigned int depth, unsigned int row, unsigned int col);
+    static Matrix2d* callAllocElementH(unsigned int row, unsigned int col);
+    static Matrix2d* callAllocElementD(unsigned int row, unsigned int col);
+    static Tensor3d* callAllocElementH(unsigned int depth, unsigned int row, unsigned int col);
+    static Tensor3d* callAllocElementD(unsigned int depth, unsigned int row, unsigned int col) ;
+    static Tensor4d* callAllocElementH(unsigned int w, unsigned int depth, unsigned int row, unsigned int col);
+    static Tensor4d* callAllocElementD(unsigned int w, unsigned int depth, unsigned int row, unsigned int col);
 
     static void callAllocRandom(Matrix2d *mat1);
     static void callAllocZero(Matrix2d *mat1);
     static void callAllocConst(Matrix2d *mat1, float in);
 
-    static void callAllocRandom(Tensor3d *mat1);
-    static void callAllocZero(Tensor3d *mat1);
-    static void callAllocConst(Tensor3d *mat1, float in);
+    static void callAllocRandom(Tensor *mat1);
+    static void callAllocZero(Tensor *mat1);
+    static void callAllocConst(Tensor *mat1, float in);
 
     static Matrix2d* callCopyD2D(Matrix2d *src, Matrix2d *dist);
     static Matrix2d* callCopyD2H(Matrix2d *src, Matrix2d* dist);
@@ -166,9 +194,7 @@ static void sum(Matrix::Matrix2d* mat1, float* buffer){
 
 static float sumC(Matrix::Matrix2d* mat1){
     float sum = 0;
-    Matrix::Matrix2d* host;
-    cudaMallocHost((void**)&host, sizeof(Matrix::Matrix2d));
-    Matrix::callAllocElementH(host, mat1->rowcount, mat1->colcount);
+    auto* host = Matrix::callAllocElementH(mat1->rowcount, mat1->colcount);
     copyH2D(mat1,host);
     for (unsigned int i=0; i<mat1->rowcount* mat1->colcount; i++){
         sum+=host->elements[i];

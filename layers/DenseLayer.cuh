@@ -27,27 +27,16 @@ public:
          this->NEXT_NODE_NUMBER = NEXT_NODE_NUMBER;
          this->id = LayerID;
 
-         //allocate matrix callers
-         cudaMallocHost((void**)(&nodes), sizeof(Matrix::Matrix2d));
-         cudaMallocHost((void**)(&weights), sizeof(Matrix::Matrix2d));
-         cudaMallocHost((void**)(&biases), sizeof(Matrix::Matrix2d));
-         cudaMallocHost((void**)(&z), sizeof(Matrix::Matrix2d));
-         cudaMallocHost((void**)(&errors), sizeof(Matrix::Matrix2d));
-         cudaMallocHost((void**)(&weightBuffer), sizeof(Matrix::Matrix2d)); // for transpose operation
-         cudaMallocHost((void**)(&prevActivationBuffer), sizeof(Matrix::Matrix2d));
-         cudaMallocHost((void**)(&weightDerivatives), sizeof(Matrix::Matrix2d));
-         cudaMallocHost((void**)(&biasDerivatives), sizeof(Matrix::Matrix2d));
-
          //allocate matrix
-         Matrix::callAllocElementD(nodes, NODE_NUMBER, 1);
-         Matrix::callAllocElementD(weights, NODE_NUMBER, PREV_NODE_NUMBER);
-         Matrix::callAllocElementD(biases, NODE_NUMBER, 1);
-         Matrix::callAllocElementD(z, NODE_NUMBER, 1);
-         Matrix::callAllocElementD(weightDerivatives, NODE_NUMBER, PREV_NODE_NUMBER);
-         Matrix::callAllocElementD(errors, NODE_NUMBER, 1);
-         Matrix::callAllocElementD(weightBuffer, NODE_NUMBER, NEXT_NODE_NUMBER);
-         Matrix::callAllocElementD(prevActivationBuffer, 1, PREV_NODE_NUMBER);
-         Matrix::callAllocElementD(biasDerivatives, NODE_NUMBER, 1);
+         nodes = Matrix::callAllocElementD(NODE_NUMBER, 1);
+         weights = Matrix::callAllocElementD(NODE_NUMBER, PREV_NODE_NUMBER);
+         biases = Matrix::callAllocElementD(NODE_NUMBER, 1);
+         z =Matrix::callAllocElementD( NODE_NUMBER, 1);
+         weightDerivatives = Matrix::callAllocElementD(NODE_NUMBER, PREV_NODE_NUMBER);
+         errors = Matrix::callAllocElementD(NODE_NUMBER, 1);
+         weightBuffer = Matrix::callAllocElementD(NODE_NUMBER, NEXT_NODE_NUMBER);
+         prevActivationBuffer = Matrix::callAllocElementD(1, PREV_NODE_NUMBER);
+         biasDerivatives = Matrix::callAllocElementD( NODE_NUMBER, 1);
 
          logInfo("Layer register complete : " + to_string(id) + " " + getType() + " " + to_string(NODE_NUMBER));
          logInfo("cuda memory occupation :" + to_string((double)(sizeof(float)*(5*NODE_NUMBER + 2*NODE_NUMBER*PREV_NODE_NUMBER

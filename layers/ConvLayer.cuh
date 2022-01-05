@@ -8,13 +8,15 @@
 #include "Layer.cuh"
 #include "../utils/logger.cuh"
 
+
 class ConvLayer : public Layer{
 public:
-     Matrix::Matrix2d* filterBuffer, *featureMapBuffer;
-     Matrix::Tensor3d* paddedFeature, *filters, *output;
+     Matrix::Matrix2d* filterBuffer, *featureMapBuffer, *outputBuffer;
+     Matrix::Tensor3d* paddedFeature, *output;
+     Matrix::Tensor4d* filters;
      string getType() override;
 
-     ConvLayer(dim3 filterSize, dim3 featureMapSize, int stride, int layerID) :
+     ConvLayer(dim4 filterSize, dim3 featureMapSize, int stride, int layerID) :
           Layer((int)filterSize.z * (int)pow((featureMapSize.y-1)/stride+1,2)) {
 
          this->id = layerID;
@@ -27,21 +29,17 @@ public:
                                        featureMapSize.z);
 
          //register indexes
-         cudaMallocHost(&paddedFeature, sizeof(Matrix::Tensor3d));
-         cudaMallocHost(&filters, sizeof(Matrix::Tensor3d));
-         cudaMallocHost(&output, sizeof(Matrix::Tensor3d));
-         cudaMallocHost(&filterBuffer, sizeof(Matrix::Matrix2d));
-         cudaMallocHost(&featureMapBuffer, sizeof(Matrix::Matrix2d));
+         cudaMallocHost(&filterBuffer, sizeof(Matrix::Matrix2d));     //empty
+         cudaMallocHost(&outputBuffer, sizeof(Matrix::Matrix2d));     //empty
 
          //alloc all convolution volumes
-         Matrix::callAllocElementD(paddedFeature, featureMapSize.z, paddedFeatureSize.y,paddedFeatureSize.x);
-         Matrix::callAllocElementD(filters, filterSize.z, filterSize.y, filterSize.x);
-         Matrix::callAllocElementD(output, filterSize.z, (paddedFeatureSize.y-filterSize.y)/stride+1,
+         paddedFeature = Matrix::callAllocElementD(featureMapSize.z, paddedFeatureSize.y,paddedFeatureSize.x);
+         filters = Matrix::callAllocElementD(filterSize.w, filterSize.z , filterSize.y, filterSize.x);
+         output = Matrix::callAllocElementD(filterSize.z, (paddedFeatureSize.y-filterSize.y)/stride+1,
                                    (paddedFeatureSize.y-filterSize.y)/stride+1);
 
          //alloc buffers for gemm operation in convolution
-         Matrix::callAllocElementD(filterBuffer, filterSize.z, filterSize.x*filterSize.y*featureMapSize.z);
-         Matrix::callAllocElementD(featureMapBuffer,filterSize.x*filterSize.y*featureMapSize.z,
+         featureMapBuffer = Matrix::callAllocElementD(filterSize.x*filterSize.y*featureMapSize.z,
                                    output->rowcount * output->colcount);
 
          this->nodes->elements = output->elements;
