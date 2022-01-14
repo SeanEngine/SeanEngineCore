@@ -23,36 +23,13 @@ void run(){
     model->loadModel();
     model->loadDataSet();
     model->loadData();
-    //Matrix::inspect(((DenseLayer*)(model->layers[1]))->weights);
 
     for(int i=0; i<1e3*3; i++) {
         model->loadData();
         model->train();
     }
-
-    int success = 0;
-    for(int trial=0; trial<60000; trial++){
-        Matrix::Matrix2d* data = model->dataset[trial];
-        Matrix::Matrix2d* label = model->labelSet[trial];
-        model->layers[0]->nodes = flatten(data);
-        model->run();
-
-        int maxIndex1 = 0, maxIndex2 = 0;
-        auto* debug = Matrix::callAllocElementH(10, 1);
-        cudaMemcpy(debug->elements, model->layers[3]->nodes->elements, sizeof(float) * 10, cudaMemcpyDeviceToHost);
-        for(int i=0; i< 10; i++) {
-            maxIndex1 = debug->elements[i] > debug->elements[maxIndex1] ? i : maxIndex1;
-        }
-        cudaMemcpy(debug->elements, label->elements, sizeof(float) * 10, cudaMemcpyDeviceToHost);
-        for(int i=0; i< 10; i++){
-            maxIndex2 =  debug->elements[i] > debug->elements[maxIndex2] ? i : maxIndex2;
-        }
-        success = maxIndex1 == maxIndex2 ? success+1 : success;
-    }
-
-    cout<<success<<endl;
 }
 
 int main(int argc, char **argv) {
-    run();
+
 }

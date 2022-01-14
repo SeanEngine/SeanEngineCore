@@ -49,9 +49,10 @@ public:
         Matrix2d* operator*(float con);
 
         //get the element at the particular location
-        __device__ float get(unsigned int row, unsigned int col) const  ;
-        __device__ void set(unsigned int row, unsigned int col, float value) const;
-        __device__ void add(unsigned int row, unsigned int col, float value) const;
+        __inline__ __device__ float get(unsigned int row, unsigned int col) const;
+        __inline__ __device__ void set(unsigned int row, unsigned int col, float value) const;
+        __inline__ __device__ void add(unsigned int row, unsigned int col, float value) const;
+        __inline__ __device__ void atomAdd(unsigned int row, unsigned int col, float value) const;
 
         __host__ void setH2D(unsigned int row, unsigned int col, float value);
         __host__ void setH2D(unsigned int offset, float value);
@@ -70,11 +71,13 @@ public:
         unsigned int rowcount;
         unsigned int colcount;
 
-        __device__ float get(unsigned int depth, unsigned int row, unsigned int col) const;
-        __device__ float get(unsigned int depth, unsigned int offset) const;
-        __device__ void set(unsigned int depth, unsigned int row, unsigned int col, float value) const;
-        __device__ void set(unsigned int depth, unsigned int offset, float value) const;
-        __device__ void add(unsigned int depth, unsigned int row, unsigned int col, float value) const;
+        __inline__ __device__ float get(unsigned int depth, unsigned int row, unsigned int col) const;
+        __inline__ __device__ float get(unsigned int depth, unsigned int offset) const;
+        __inline__ __device__ void set(unsigned int depth, unsigned int row, unsigned int col, float value) const;
+        __inline__ __device__ void set(unsigned int depth, unsigned int offset, float value) const;
+        __inline__ __device__ void add(unsigned int depth, unsigned int row, unsigned int col, float value) const;
+        __inline__ __device__ void atomAdd(unsigned int depth, unsigned int row, unsigned int col, float value) const;
+
 
         __host__ void extract2d(unsigned int depth, Matrix2d* mat) const;
         __host__ void emplace2d(unsigned int depth, Matrix2d* mat) const;
@@ -87,14 +90,14 @@ public:
         unsigned int rowcount;
         unsigned int colcount;
 
-        __device__ float get(unsigned int w, unsigned int depth, unsigned int row, unsigned int col) const;
-        __device__ void set(unsigned int w, unsigned int depth, unsigned int row, unsigned int col, float value) const;
+        __inline__ __device__ float get(unsigned int w, unsigned int depth, unsigned int row, unsigned int col) const;
+        __inline__ __device__ void set(unsigned int w, unsigned int depth, unsigned int row, unsigned int col, float value) const;
 
         __host__ string toString() const;
     };
 
     //faster calculation methods
-    static __device__ float fasterSqrt(float in);
+    static __inline__ __device__ float fasterSqrt(float in);
 
     //debug tools
     static void inspect(Matrix2d *mat1);
@@ -135,15 +138,13 @@ public:
     static Matrix2d* callInsertCol(Matrix2d* mat1, Matrix2d* column, unsigned int colIndex);
 
     //operator methods and normal operations
-    static Matrix2d* callHadmardP(Matrix2d* mat1, Matrix2d* mat2);
+    static Matrix2d* callHadamardP(Matrix2d* mat1, Matrix2d* mat2);
     static Matrix2d* callConstantP(Matrix2d* mat1, float con);
     static Matrix2d* callAddition(Matrix2d* mat1, Matrix2d* mat2);
     static Matrix2d* callAddition(Matrix2d* mat1, float con);
     static Matrix2d* callSubtraction(Matrix2d* mat1, Matrix2d* mat2);
     static Matrix2d* callSubtraction(Matrix2d* mat1, float con);
     static Matrix2d* callPower(Matrix2d* mat1, float con);
-
-
 };
 
 //method that does not need the class name (for clarity)

@@ -6,23 +6,30 @@
 #define CUDANNGEN2_CONVLAYER_CUH
 
 #include "Layer.cuh"
+#include "../utils/NeuralUtils.cuh"
 #include "../utils/logger.cuh"
 
 
 class ConvLayer : public Layer{
 public:
-     Matrix::Matrix2d* filterBuffer, *featureMapBuffer, *outputBuffer;
-     Matrix::Tensor3d* paddedFeature, *output;
+     Matrix::Matrix2d* filterBuffer, *featureMapBuffer, *zBuffer, *filterBiases;
+     Matrix::Tensor3d* paddedFeature, *z, *output;
      Matrix::Tensor4d* filters;
+
+    Matrix::Matrix2d* propaBuffer, *errors, *filterBufferTrans;
+     int stride;
+
      string getType() override;
 
      ConvLayer(dim4 filterSize, dim3 featureMapSize, int stride, int layerID) :
           Layer((int)filterSize.z * (int)pow((featureMapSize.y-1)/stride+1,2)) {
 
          this->id = layerID;
+         this->stride = stride;
 
+         //for now this layer only accepts square filters and features, since the test on
+         //allocating gemm with rectangular shaped features failed with a bug I can't fix
          assert(filterSize.y == filterSize.x && featureMapSize.y == featureMapSize.x);
-         assert(filterSize.y % 2 != 0);
 
          //calculate padding size
          dim3 paddedFeatureSize = dim3(featureMapSize.x+(filterSize.x/2)*2, featureMapSize.x+(filterSize.y/2)*2,
@@ -30,24 +37,41 @@ public:
 
          //register indexes
          cudaMallocHost(&filterBuffer, sizeof(Matrix::Matrix2d));     //empty
-         cudaMallocHost(&outputBuffer, sizeof(Matrix::Matrix2d));     //empty
+         cudaMallocHost(&zBuffer, sizeof(Matrix::Matrix2d));     //empty
 
          //alloc all convolution volumes
          paddedFeature = Matrix::callAllocElementD(featureMapSize.z, paddedFeatureSize.y,paddedFeatureSize.x);
          filters = Matrix::callAllocElementD(filterSize.w, filterSize.z , filterSize.y, filterSize.x);
-         output = Matrix::callAllocElementD(filterSize.z, (paddedFeatureSize.y-filterSize.y)/stride+1,
+         filterBiases = Matrix::callAllocElementD(filterSize.w, 1);
+         z = Matrix::callAllocElementD(filterSize.z, (paddedFeatureSize.y-filterSize.y)/stride+1,
                                    (paddedFeatureSize.y-filterSize.y)/stride+1);
+         output = Matrix::callAllocElementD(filterSize.z, (paddedFeatureSize.y-filterSize.y)/stride+1,
+                                            (paddedFeatureSize.y-filterSize.y)/stride+1);
 
          //alloc buffers for gemm operation in convolution
          featureMapBuffer = Matrix::callAllocElementD(filterSize.x*filterSize.y*featureMapSize.z,
-                                   output->rowcount * output->colcount);
+                                   z->rowcount * z->colcount);
+
+         //this is used when we propagate the errors of this layer back to lower level layers
+         propaBuffer = Matrix::callAllocElementD(filterSize.x * filterSize.y * featureMapSize.z,
+                                           z->rowcount * z->colcount);
+
+         //the error of this layer stored as 2d matrix for easier computation
+         errors = Matrix::callAllocElementD(filterSize.z, (paddedFeatureSize.y-filterSize.y)/stride+1 *
+                                            (paddedFeatureSize.y-filterSize.y)/stride+1);
 
          this->nodes->elements = output->elements;
 
          logInfo("Layer register complete : " + to_string(id) + " " + getType() + " " + to_string(NODE_NUMBER));
          logInfo("CONV INFO: filters: " + filters->toString() + " padded features: " + paddedFeature->toString()
-                                  + " output: " + output->toString());
+                                  + " z: " + z->toString());
      }
+
+     //forward convolution operations
+     void activate(Matrix::Tensor3d* prevFeatures);
+
+     //back propagation
+     void propagate(Matrix::Matrix2d* prevErrors, Matrix::Matrix2d *prevZBuffer);
 
      void activate(Layer *prevLayer) override;
      void propagate(Layer *prev, Layer *next) override;

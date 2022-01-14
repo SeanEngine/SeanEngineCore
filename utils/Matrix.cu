@@ -30,6 +30,11 @@ __device__ void Matrix::Matrix2d::add(unsigned int row, unsigned int col, float 
         this->elements[row * this->colcount + col] += value;
 }
 
+__device__ void Matrix::Matrix2d::atomAdd(unsigned int row, unsigned int col, float value) const {
+    if (row < rowcount && col < colcount && row >= 0 && col >= 0)
+        atomicAdd(this->elements + row * colcount + col, value);
+}
+
 __device__ float Matrix::Tensor3d::get(unsigned int depth, unsigned int row, unsigned int col) const {
     if(row >= rowcount && col >= colcount && depth >= depthCount) return 0.0f;
     return this->elements[depth * this->rowcount * this->colcount + row * this->colcount + col];
@@ -55,6 +60,12 @@ __device__ void Matrix::Tensor3d::add(unsigned int depth, unsigned int row, unsi
         this->elements[depth * this->rowcount * this->colcount + row * this->colcount + col] += value;
 }
 
+__device__ void Matrix::Tensor3d::atomAdd(unsigned int depth, unsigned int row, unsigned int col, float value) const {
+    if(row < rowcount && col < colcount && depth < depthCount)
+        atomicAdd(elements + depth * this->rowcount * this->colcount + row * this->colcount + col, value);
+}
+
+
 __device__ float Matrix::Tensor4d::get(unsigned int w, unsigned int depth, unsigned int row, unsigned int col) const {
     if(row >= rowcount && col >= colcount && depth >= depthCount && w > wCount) return 0.0f;
     return this->elements[w*depthCount*rowcount*colcount + depth*rowcount*colcount + row*colcount + col];
@@ -79,13 +90,6 @@ __host__ string Matrix::Tensor3d::toString() const {
     return "(" + to_string(depthCount) + "," + to_string(rowcount) + "," + to_string(colcount) + ")";
 }
 
-__global__ void setVal(Matrix::Matrix2d *mat1, unsigned int row, unsigned int col, float value) {
-    mat1->set(row, col, value);
-}
-
-__global__ void setVal(Matrix::Matrix2d *mat1, unsigned int offset, float value) {
-    mat1->elements[offset] = value;
-}
 
 __device__ float Matrix::fasterSqrt(float in) {
     float half = 0.5f * in;
@@ -702,7 +706,7 @@ Matrix::callCrossPrefetchingA(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2, Ma
     return result;
 }
 
-Matrix::Matrix2d *Matrix::callHadmardP(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2) {
+Matrix::Matrix2d *Matrix::callHadamardP(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2) {
     dim3 gridSize = dim3((mat1->colcount + CUDA_BLOCK_SIZE.x - 1) / (CUDA_BLOCK_SIZE.x),
                          (mat1->rowcount + CUDA_BLOCK_SIZE.y - 1) / CUDA_BLOCK_SIZE.y);
     hadmardProduct<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1, mat2);
@@ -834,6 +838,7 @@ Matrix::Matrix2d *Matrix::callInsertCol(Matrix::Matrix2d *mat1, Matrix::Matrix2d
     return mat1;
 }
 
+
 //operators
 Matrix::Matrix2d *Matrix::Matrix2d::operator+(Matrix::Matrix2d *mat2) {
     return callAddition(this, mat2);
@@ -860,7 +865,7 @@ Matrix::Matrix2d *Matrix::Matrix2d::operator*(float con) {
 }
 
 Matrix::Matrix2d *Matrix::Matrix2d::operator*(Matrix::Matrix2d *mat2) {
-    return callHadmardP(this, mat2);
+    return callHadamardP(this, mat2);
 }
 
 Matrix::Matrix2d *Matrix::Matrix2d::operator+=(Matrix::Matrix2d *mat2) {
@@ -873,22 +878,17 @@ Matrix::Matrix2d *Matrix::Matrix2d::operator+=(float con) {
 
 void Matrix::Matrix2d::setH2D(unsigned int row, unsigned int col, float value) {
     assert(row < this->rowcount && col < this->colcount);
-    setVal<<<1, 1>>>(this, row, col, value);
-    cudaDeviceSynchronize();
+    cudaMemcpy(this->elements + row*colcount + col, &value, sizeof(float), cudaMemcpyHostToDevice);
 }
 
 __host__ void Matrix::Matrix2d::setH2D(unsigned int offset, float value) {
     assert(offset < this->rowcount * this->colcount);
-    setVal<<<1, 1>>>(this, offset, value);
-    cudaDeviceSynchronize();
+    cudaMemcpy(this->elements + offset, &value, sizeof(float), cudaMemcpyHostToDevice);
 }
 
 __host__ float Matrix::Matrix2d::getH2D(unsigned int row, unsigned int col) const {
-    float *temp;
-    cudaMallocHost((void **) &temp, sizeof(float));
-    cudaMemcpy(temp, this->elements + row * this->colcount + col, sizeof(float), cudaMemcpyDeviceToHost);
-    float output = *temp;
-    cudaFreeHost(temp);
+    float output=0;
+    cudaMemcpy(&output, this->elements + row * this->colcount + col, sizeof(float), cudaMemcpyDeviceToHost);
     return output;
 }
 

@@ -7,6 +7,12 @@
 #include <cstdio>
 #include <iostream>
 
+__global__ void allocConvBias(Matrix::Matrix2d* outputBuffer, Matrix::Matrix2d* biases){
+    unsigned int col = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int row = blockIdx.y * blockDim.y + threadIdx.y;
+    outputBuffer->set(row, col, biases->get(row,0));
+}
+
 __inline__ __device__ float warpReduce(float val) {
     #pragma unroll
     for (int mask = WARP_SIZE >> 1; mask > 0; mask >>= 1) {
@@ -191,28 +197,62 @@ __global__ void leakyReluDerivative(Matrix::Matrix2d *mat1, Matrix::Matrix2d *re
     result->set(row, col, x > 0 ? 1 : ALPHA);
 }
 
+__global__ void leakyReluActivation(Matrix::Tensor* mat1, Matrix::Tensor* result, float ALPHA){
+    unsigned int index = blockIdx.x * blockDim.x + threadIdx.x;
+    if(index < result->elementCount) {
+        float x = mat1->elements[index];
+        result->elements[index] = x > 0 ? x : ALPHA * x;
+    }
+}
+
+__global__ void leakyReluDerivative(Matrix::Tensor* mat1, Matrix::Tensor* result, float ALPHA){
+    unsigned int index = blockIdx.x * blockDim.x + threadIdx.x;
+    if(index < result->elementCount){
+        float x = mat1->elements[index];
+        result->elements[index] = x > 0 ? 1 : ALPHA;
+    }
+}
+
 //this method generates a patched form of the feature maps
 //see graph 3 on : https://sahnimanas.github.io/post/anatomy-of-a-high-performance-convolution/
-__global__ void convPrepareFeatureMap(Matrix::Tensor3d* featureMaps, Matrix::Matrix2d* featureBuffer,
-                                      unsigned int filterSize, unsigned int stride){
-    unsigned int col = blockIdx.x * blockDim.x + threadIdx.x;
+__global__ void imgToCol(Matrix::Tensor3d* featureMaps, Matrix::Matrix2d* featureBuffer, unsigned int outputHeight,
+                         unsigned int filterSize, unsigned int stride){
+    unsigned int colID = blockIdx.x * blockDim.x + threadIdx.x;
     unsigned int depth = blockIdx.y * blockDim.y + threadIdx.y;
-    if(depth < (featureBuffer->rowcount / (filterSize*filterSize))) {
-        unsigned int filterOffset = filterSize / 2;
-        unsigned int applyColCount = (featureMaps->colcount - filterSize) / stride + 1;
+    unsigned int k2 = filterSize*filterSize;
+    if(depth < (featureBuffer->rowcount / (k2))) {
+        unsigned int startRow = (colID/outputHeight)*stride;
+        unsigned int startCol = (colID%outputHeight)*stride;
 
-        //set the copying parameters
-        unsigned int convCenterRow = filterOffset + (col / applyColCount) * stride;
-        unsigned int convCenterCol = filterOffset + (col % applyColCount) * stride;
-
-        //copy feature maps to buffer
         #pragma unroll
-        for (int i = 0; i < filterSize; i++) {
+        for(int i=0; i<filterSize; i++){
             #pragma unroll
-            for (int j = 0; j < filterSize; j++) {
-                // featureMaps->get(depth,i,j)
-                featureBuffer->set(depth*filterSize*filterSize + i*filterSize + j, col,featureMaps->get(
-                        depth,convCenterRow + i - filterOffset,convCenterCol + j - filterOffset));
+            for(int j=0; j<filterSize; j++){
+                featureBuffer->set(depth*k2 + i*filterSize + j, colID, featureMaps->get(depth, startRow+i, startCol+j));
+            }
+        }
+    }
+}
+
+//this is used in the back propagation
+__global__ void colToImg2DNoPadding(Matrix::Matrix2d* errors, Matrix::Matrix2d* propaBuffer, unsigned int outputHeight,
+                                    unsigned int sourceHeight, unsigned int filterSize, unsigned int stride, unsigned int padSize){
+    unsigned int colID = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int depth = blockIdx.y * blockDim.y + threadIdx.y;
+    unsigned int k2 = filterSize*filterSize;
+    unsigned int sourceCols = errors->colcount/sourceHeight;
+    if(depth < (propaBuffer->rowcount / (k2))) {
+        unsigned int startRow = (colID/outputHeight)*stride;
+        unsigned int startCol = (colID%outputHeight)*stride;
+        if(startRow< padSize || startCol < padSize || startRow > padSize+sourceHeight || startCol > sourceCols)
+            return;
+
+        #pragma unroll
+        for(int i=0; i<filterSize; i++){
+            #pragma unroll
+            for(int j=0; j<filterSize; j++){
+                errors->atomAdd(depth, (startRow+i-padSize)*sourceHeight + startCol + j - padSize,
+                                propaBuffer->get(depth*k2 + i*filterSize + j, colID));
             }
         }
     }
@@ -250,7 +290,7 @@ Matrix::Matrix2d *NeuralUtils::callDerivativeSigmoid(Matrix::Matrix2d *mat1, Mat
     return result;
 }
 
-Matrix::Matrix2d *NeuralUtils::callLeakyReluDerivative(Matrix::Matrix2d *mat1, Matrix::Matrix2d *result, float ALPHA) {
+Matrix::Matrix2d *NeuralUtils::callDerivativeLeakyRelu(Matrix::Matrix2d *mat1, Matrix::Matrix2d *result, float ALPHA) {
     dim3 gridSize = dim3((mat1->colcount + CUDA_BLOCK_SIZE.x - 1) / (CUDA_BLOCK_SIZE.x),
                          (mat1->rowcount + CUDA_BLOCK_SIZE.y - 1) / CUDA_BLOCK_SIZE.y);
     leakyReluDerivative<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1, result, ALPHA);
@@ -258,13 +298,22 @@ Matrix::Matrix2d *NeuralUtils::callLeakyReluDerivative(Matrix::Matrix2d *mat1, M
     return result;
 }
 
-Matrix::Matrix2d *NeuralUtils::callLeakyReluActivation(Matrix::Matrix2d *mat1, Matrix::Matrix2d *result, float ALPHA) {
+Matrix::Matrix2d *NeuralUtils::callActivationLeakyRelu(Matrix::Matrix2d *mat1, Matrix::Matrix2d *result, float ALPHA) {
     dim3 gridSize = dim3((mat1->colcount + CUDA_BLOCK_SIZE.x - 1) / (CUDA_BLOCK_SIZE.x),
                          (mat1->rowcount + CUDA_BLOCK_SIZE.y - 1) / CUDA_BLOCK_SIZE.y);
     leakyReluActivation<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1, result, ALPHA);
     cudaDeviceSynchronize();
     return result;
 }
+
+Matrix::Tensor *NeuralUtils::callActivationLeakyRelu(Matrix::Tensor *mat1, Matrix::Tensor *result, float ALPHA) {
+    return nullptr;
+}
+
+Matrix::Tensor *NeuralUtils::callDerivativeLeakyRelu(Matrix::Tensor *mat1, Matrix::Tensor *result, float ALPHA) {
+    return nullptr;
+}
+
 
 //buffer can be set to null if the softmax operation is applied to matrices less than 1024 elements
 //call the softmax activation
@@ -320,7 +369,8 @@ Matrix::Matrix2d *NeuralUtils::callSoftMaxCost(Matrix::Matrix2d *mat1,Matrix::Ma
 //outputDim = (n-f)/s + 1
 Matrix::Tensor3d *
 NeuralUtils::callConv2d(Matrix::Tensor3d *mat1, Matrix::Tensor4d *filter, Matrix::Tensor3d *result, unsigned int stride,
-                        Matrix::Matrix2d* filterBuffer, Matrix::Matrix2d* featureBuffer, Matrix::Matrix2d* outputBuffer) {
+                        Matrix::Matrix2d* filterBuffer, Matrix::Matrix2d* featureBuffer, Matrix::Matrix2d* outputBuffer,
+                        Matrix::Matrix2d* biases) {
     //condition check
     assert(mat1->rowcount == mat1->colcount && filter->rowcount==filter->colcount);
     assert(filter->depthCount == mat1->depthCount);
@@ -331,11 +381,6 @@ NeuralUtils::callConv2d(Matrix::Tensor3d *mat1, Matrix::Tensor4d *filter, Matrix
     assert(featureBuffer->rowcount == filter->depthCount * filter->rowcount * filter->colcount);
     assert(featureBuffer->colcount == result->rowcount* result->colcount);
 
-    //prepare buffer for gemm operation
-    dim3 featureGridSize = dim3((featureBuffer->colcount + CUDA_BLOCK_SIZE.x-1)/CUDA_BLOCK_SIZE.x,
-                                (featureBuffer->rowcount/(filter->rowcount * filter->colcount) + CUDA_BLOCK_SIZE.y-1)/ CUDA_BLOCK_SIZE.y);
-    convPrepareFeatureMap<<<featureGridSize, CUDA_BLOCK_SIZE>>>(mat1,featureBuffer, filter->colcount, stride);
-
     filterBuffer->rowcount = filter->wCount;
     filterBuffer->colcount = filter->depthCount * filter->rowcount * filter->colcount;
     filterBuffer->elements = filter->elements;
@@ -345,9 +390,10 @@ NeuralUtils::callConv2d(Matrix::Tensor3d *mat1, Matrix::Tensor4d *filter, Matrix
     outputBuffer->elements = result->elements;
 
     cudaDeviceSynchronize();
+    img2col(mat1, featureBuffer, result->rowcount, filter->rowcount, stride);
 
     //cross
-    cross(filterBuffer, featureBuffer, outputBuffer);
+    crossA(filterBuffer, featureBuffer, callAllocConvBias(outputBuffer, biases));
     cudaDeviceSynchronize();
     return result;
 }
@@ -363,4 +409,37 @@ Matrix::Tensor3d *NeuralUtils::padding3d(Matrix::Tensor3d *mat1, Matrix::Tensor3
     pad3d<<<gridSize, CUDA_BLOCK_SIZE_3D>>>(mat1,output,padSize);
     cudaDeviceSynchronize();
     return output;
+}
+
+Matrix::Matrix2d *NeuralUtils::callAllocConvBias(Matrix::Matrix2d *outputBuffer, Matrix::Matrix2d *bias) {
+    assert(bias->rowcount == outputBuffer->rowcount && bias->colcount == 1);
+    dim3 gridSize = dim3((outputBuffer->colcount + CUDA_BLOCK_SIZE.x-1)/CUDA_BLOCK_SIZE.x,
+                         (outputBuffer->rowcount + CUDA_BLOCK_SIZE.y-1)/CUDA_BLOCK_SIZE.y);
+    allocConvBias<<<gridSize, CUDA_BLOCK_SIZE>>>(outputBuffer, bias);
+    cudaDeviceSynchronize();
+    return outputBuffer;
+}
+
+
+Matrix::Matrix2d *
+NeuralUtils::callImg2Col(Matrix::Tensor3d *featureMaps, Matrix::Matrix2d *featureBuffer, unsigned int outputHeight,
+                         unsigned int filterSize, unsigned int stride) {
+    //prepare buffer for gemm operation
+    dim3 featureGridSize = dim3((featureBuffer->colcount + CUDA_BLOCK_SIZE.x-1)/CUDA_BLOCK_SIZE.x,
+                                (featureBuffer->rowcount/(filterSize*filterSize) + CUDA_BLOCK_SIZE.y-1)/ CUDA_BLOCK_SIZE.y);
+    imgToCol<<<featureGridSize, CUDA_BLOCK_SIZE>>>(featureMaps, featureBuffer, outputHeight, filterSize, stride);
+    cudaDeviceSynchronize();
+    return featureBuffer;
+}
+
+Matrix::Matrix2d *
+NeuralUtils::callCol2Img2dNP(Matrix::Matrix2d *errors, Matrix::Matrix2d *propaBuffer, unsigned int outputHeight,
+                             unsigned int sourceHeight, unsigned int filterSize, unsigned int stride,
+                             unsigned int padSize) {
+    dim3 featureGridSize = dim3((propaBuffer->colcount + CUDA_BLOCK_SIZE.x-1)/CUDA_BLOCK_SIZE.x,
+                                (propaBuffer->rowcount/(filterSize*filterSize) + CUDA_BLOCK_SIZE.y-1)/ CUDA_BLOCK_SIZE.y);
+    colToImg2DNoPadding<<<featureGridSize, CUDA_BLOCK_SIZE>>>(errors, propaBuffer, outputHeight, sourceHeight,
+                                                              filterSize, stride, padSize);
+    cudaDeviceSynchronize();
+    return errors;
 }
