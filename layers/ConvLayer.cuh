@@ -12,9 +12,10 @@
 
 class ConvLayer : public Layer{
 public:
-     Matrix::Matrix2d* filterBuffer, *featureMapBuffer, *zBuffer, *filterBiases;
+     Matrix::Matrix2d* filterBuffer, *featureMapBuffer, *zBuffer, *filterBiases, *filterBiasD, *filterDBuffer;
+     Matrix::Matrix2d* outputTransit, *outputBuffer; //For back propagation
      Matrix::Tensor3d* paddedFeature, *z, *output;
-     Matrix::Tensor4d* filters;
+     Matrix::Tensor4d* filters, *filterD;
 
     Matrix::Matrix2d* propaBuffer, *errors, *filterBufferTrans;
      int stride;
@@ -38,15 +39,20 @@ public:
          //register indexes
          cudaMallocHost(&filterBuffer, sizeof(Matrix::Matrix2d));     //empty
          cudaMallocHost(&zBuffer, sizeof(Matrix::Matrix2d));     //empty
+         cudaMallocHost(&filterDBuffer, sizeof(Matrix::Matrix2d));
+         cudaMallocHost(&outputBuffer,sizeof(Matrix::Matrix2d));
 
          //alloc all convolution volumes
          paddedFeature = Matrix::callAllocElementD(featureMapSize.z, paddedFeatureSize.y,paddedFeatureSize.x);
          filters = Matrix::callAllocElementD(filterSize.w, filterSize.z , filterSize.y, filterSize.x);
+         filterD = Matrix::callAllocElementD(filterSize.w, filterSize.z , filterSize.y, filterSize.x);
          filterBiases = Matrix::callAllocElementD(filterSize.w, 1);
+         filterBiasD = Matrix::callAllocElementD(filterSize.w, 1);
          z = Matrix::callAllocElementD(filterSize.z, (paddedFeatureSize.y-filterSize.y)/stride+1,
                                    (paddedFeatureSize.y-filterSize.y)/stride+1);
          output = Matrix::callAllocElementD(filterSize.z, (paddedFeatureSize.y-filterSize.y)/stride+1,
                                             (paddedFeatureSize.y-filterSize.y)/stride+1);
+         outputTransit = Matrix::callAllocElementD(output->rowcount * output->colcount, output->depthCount);
 
          //alloc buffers for gemm operation in convolution
          featureMapBuffer = Matrix::callAllocElementD(filterSize.x*filterSize.y*featureMapSize.z,
@@ -60,6 +66,10 @@ public:
          errors = Matrix::callAllocElementD(filterSize.z, (paddedFeatureSize.y-filterSize.y)/stride+1 *
                                             (paddedFeatureSize.y-filterSize.y)/stride+1);
 
+         //initialize buffers and alloc pointers to tensors they represents
+         filterDBuffer->index(filterSize.w, filterSize.z * filterSize.y * filterSize.x, filterD->elements);
+         outputBuffer->index(output->depthCount, output->rowcount * output->colcount, output->elements);
+
          this->nodes->elements = output->elements;
 
          logInfo("Layer register complete : " + to_string(id) + " " + getType() + " " + to_string(NODE_NUMBER));
@@ -72,6 +82,8 @@ public:
 
      //back propagation
      void propagate(Matrix::Matrix2d* prevErrors, Matrix::Matrix2d *prevZBuffer);
+
+     void recFilters(Matrix::Matrix2d* prevFeatures) const;
 
      void activate(Layer *prevLayer) override;
      void propagate(Layer *prev, Layer *next) override;

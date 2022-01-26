@@ -43,6 +43,7 @@ public:
          + NODE_NUMBER * NEXT_NODE_NUMBER))/(1024*1024)));
      }
      //The corresponding math formulas are recorded in the cu file for these methods;
+     //these methods are overrided in the softmax layer so they are defined as virtual
      //calculate activation
      virtual void calcActivate(Matrix::Matrix2d* prevNodes);
 

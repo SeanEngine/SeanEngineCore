@@ -5,11 +5,15 @@
 #include "ConvLayer.cuh"
 
 void ConvLayer::activate(Layer *prevLayer) {
-    Layer::activate(prevLayer);
+    if(prevLayer->getType() == "CONV2D"){
+        activate(((ConvLayer*)prevLayer)->output);
+    }
 }
 
 void ConvLayer::propagate(Layer *prev, Layer *next) {
-    Layer::propagate(prev, next);
+    if(prevLayer->getType() == "CONV2D"){
+        propagate(((ConvLayer*)prevLayer)->errors, ((ConvLayer*)prevLayer)->zBuffer);
+    }
 }
 
 void ConvLayer::learn(int BATCH_SIZE, float LEARNING_RATE) {
@@ -28,6 +32,7 @@ void ConvLayer::activate(Matrix::Tensor3d *prevFeatures) {
     lRelu(z, output);
 }
 
+//this method actually calculate the errors for the previous layer
 void ConvLayer::propagate(Matrix::Matrix2d *prevErrors, Matrix::Matrix2d *prevZBuffer) {
     assert(prevErrors->rowcount == paddedFeature->depthCount && prevErrors->colcount == (
             pow(paddedFeature->rowcount-(filters->rowcount/2)*2,2)
@@ -36,4 +41,8 @@ void ConvLayer::propagate(Matrix::Matrix2d *prevErrors, Matrix::Matrix2d *prevZB
     propaBuffer = cross(transpose(filterBuffer, filterBufferTrans), errors, propaBuffer);
     col2img2D(prevErrors, propaBuffer, output->rowcount, paddedFeature->rowcount-2*padSize,filters->rowcount, stride, padSize);
     *prevErrors * lReluD(prevZBuffer, prevZBuffer);
+}
+
+void ConvLayer::recFilters(Matrix::Matrix2d* prevFeatures) const {
+     crossA(errors, transpose(outputBuffer, outputTransit), prevFeatures);
 }

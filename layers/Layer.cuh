@@ -19,10 +19,17 @@ public:
 
     int id;
     int NODE_NUMBER;
+    Layer* prevLayer, *nextLayer;
 
     virtual string getType();
 
     Matrix::Matrix2d *nodes{};
+
+    Layer* bindPrev(Layer* prev);
+
+    Layer* bindNext(Layer* next);
+
+    Layer* bind(Layer* prev, Layer* next);
 
     //calculate activation
     virtual void activate(Layer *prevLayer);
@@ -32,6 +39,11 @@ public:
 
     //apply
     virtual void learn(int BATCH_SIZE, float LEARNING_RATE);
+
+    //use bind params
+    void activate();
+
+    void propagate();
 
 };
 

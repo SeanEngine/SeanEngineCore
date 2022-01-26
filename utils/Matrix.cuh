@@ -58,6 +58,9 @@ public:
         __host__ void setH2D(unsigned int offset, float value);
         __host__ float getH2D(unsigned int row, unsigned int col) const;
         __host__ string toString() const;
+
+        __host__ void index(unsigned int row, unsigned int col, float* elements);
+        __host__ void index(unsigned int row, unsigned int col);
     };
 
     struct Tensor{
@@ -77,7 +80,6 @@ public:
         __device__ void set(unsigned int depth, unsigned int offset, float value) const;
         __device__ void add(unsigned int depth, unsigned int row, unsigned int col, float value) const;
         __device__ void atomAdd(unsigned int depth, unsigned int row, unsigned int col, float value) const;
-
 
         __host__ void extract2d(unsigned int depth, Matrix2d* mat) const;
         __host__ void emplace2d(unsigned int depth, Matrix2d* mat) const;

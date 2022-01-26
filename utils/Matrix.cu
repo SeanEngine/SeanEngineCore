@@ -487,6 +487,7 @@ __global__ void insertColumn(Matrix::Matrix2d *mat1, Matrix::Matrix2d *column, u
 //memory Control:
 // ===============================================================
 
+
 Matrix::Matrix2d* Matrix::callAllocElementH(unsigned int row, unsigned int col) {
     Matrix2d* mat1;
     cudaMallocHost(&mat1, sizeof(Matrix::Matrix2d));
@@ -894,6 +895,17 @@ __host__ float Matrix::Matrix2d::getH2D(unsigned int row, unsigned int col) cons
 
 __host__ string Matrix::Matrix2d::toString() const {
     return "(" + to_string(rowcount) + "," + to_string(colcount) + ")";
+}
+
+__host__ void Matrix::Matrix2d::index(unsigned int row, unsigned int col, float* element) {
+    this->rowcount = row;
+    this->colcount = col;
+    this->elements = element;
+}
+
+__host__ void Matrix::Matrix2d::index(unsigned int row, unsigned int col) {
+    this->rowcount = row;
+    this->colcount = col;
 }
 
 __host__ string Matrix::Tensor4d::toString() const {

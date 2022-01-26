@@ -381,13 +381,8 @@ NeuralUtils::callConv2d(Matrix::Tensor3d *mat1, Matrix::Tensor4d *filter, Matrix
     assert(featureBuffer->rowcount == filter->depthCount * filter->rowcount * filter->colcount);
     assert(featureBuffer->colcount == result->rowcount* result->colcount);
 
-    filterBuffer->rowcount = filter->wCount;
-    filterBuffer->colcount = filter->depthCount * filter->rowcount * filter->colcount;
-    filterBuffer->elements = filter->elements;
-
-    outputBuffer->rowcount = result->depthCount;
-    outputBuffer->colcount = result->rowcount * result->colcount;
-    outputBuffer->elements = result->elements;
+    filterBuffer->index(filter->wCount, filter->depthCount * filter->rowcount * filter->colcount, filter->elements);
+    outputBuffer->index(result->depthCount, result->rowcount * result->colcount, result->elements);
 
     cudaDeviceSynchronize();
     img2col(mat1, featureBuffer, result->rowcount, filter->rowcount, stride);
