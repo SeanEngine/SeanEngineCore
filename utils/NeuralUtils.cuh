@@ -78,6 +78,8 @@ public:
 
     static Matrix::Matrix2d* callCol2Img2dNP(Matrix::Matrix2d* errors, Matrix::Matrix2d* propaBuffer, unsigned int outputHeight,
                                              unsigned int sourceHeight, unsigned int filterSize, unsigned int stride, unsigned int padSize);
+
+    static Matrix::Matrix2d* callRowSum(Matrix::Matrix2d* mat1, Matrix::Matrix2d* output, float* buffer);
 };
 
 static Matrix::Matrix2d* sigmoid(Matrix::Matrix2d* mat1, Matrix::Matrix2d* result){

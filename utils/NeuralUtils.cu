@@ -16,7 +16,7 @@ __global__ void allocConvBias(Matrix::Matrix2d* outputBuffer, Matrix::Matrix2d* 
 __inline__ __device__ float warpReduce(float val) {
     #pragma unroll
     for (int mask = WARP_SIZE >> 1; mask > 0; mask >>= 1) {
-        val += __shfl_xor_sync(0xffffffff, val, mask);
+        val += __shfl_xor_sync(0x1, val, mask);
     }
     return val;
 }
@@ -24,45 +24,27 @@ __inline__ __device__ float warpReduce(float val) {
 __inline__ __device__ float warpCompare(float val) {
     #pragma unroll
     for (int mask = WARP_SIZE >> 1; mask > 0; mask >>= 1) {
-        float temp = __shfl_xor_sync(0xffffffff, val, mask);
+        float temp = __shfl_xor_sync(0x1, val, mask);
         val = temp > val ? temp : val;
     }
     return val;
 }
 
-//this thing only process matrices below the size of 1024 elements
-//since nvidia decided not to code in their driver a way to sync all blocks
-__global__ void softmax1024(int n, const float* src, float* dist){
+__global__ void rowReduce(unsigned int colcount, unsigned int n, float* buffer){
     unsigned int globalID = threadIdx.x + blockIdx.x * blockDim.x;
+    unsigned int matRowID = blockIdx.y;
     unsigned int laneID = globalID % WARP_SIZE;
-    __shared__ float buffer[CUDA_SOFTMAX_BLOCK];
-
-    float value = globalID < n ? exp(src[globalID]) : 0;
-    float reduceValue;
-    buffer[globalID] = value;
+    float val = globalID < n ? buffer[matRowID * colcount + globalID] : 0;
     __syncthreads();
+    val = warpReduce(val);
+    if(laneID == 0) buffer[matRowID * colcount + globalID / WARP_SIZE] = val;
+}
 
-    unsigned int procSize = n;
-
-    //cross warp reductions together with warp reduction
-    while(procSize/WARP_SIZE > 0){
-         reduceValue = globalID < procSize ? buffer[globalID] : 0;
-         __syncthreads();
-         reduceValue = warpReduce(reduceValue);
-         if(laneID == 0 && globalID < procSize) buffer[globalID/WARP_SIZE] = reduceValue;
-         procSize = procSize%WARP_SIZE ? procSize/WARP_SIZE + 1 : procSize/WARP_SIZE;
-         __syncthreads();
+__global__ void rowReduceOutput(unsigned int colcount, float* buffer, Matrix::Matrix2d* output){
+    unsigned int rowID = threadIdx.x + blockDim.x * blockIdx.x;
+    if(rowID < output->rowcount) {
+        output->set(rowID, 0, buffer[colcount * rowID]);
     }
-
-    //the last iteration
-    reduceValue = globalID < procSize ? buffer[globalID] : 0;
-    __syncthreads();
-    reduceValue = warpReduce(reduceValue);
-    if(laneID == 0 && globalID < procSize ) buffer[globalID/WARP_SIZE] = reduceValue;
-    __syncthreads();
-
-    if(globalID<n)
-    dist[globalID] = value / buffer[0];
 }
 
 // this method will divide all elements of the matrix by the largest element
@@ -135,7 +117,7 @@ __global__ void softMaxReduce(unsigned int n, float* buffer){
     unsigned int warpID = globalID % WARP_SIZE;
     float val = globalID < n ? buffer[globalID] : 0;
     __syncthreads();
-    warpReduce(val);
+    val = warpReduce(val);
     if(warpID == 0) buffer[globalID/WARP_SIZE] = val;
 }
 
@@ -327,10 +309,14 @@ Matrix::Matrix2d *NeuralUtils::callSoftMax(Matrix::Matrix2d *mat1, Matrix::Matri
         cudaDeviceSynchronize();
         return result;
     }
+
+    //copy elements to buffer
     assert(buffer != nullptr);
     cudaMemcpy(buffer, mat1->elements, sizeof(float) *n, cudaMemcpyDeviceToDevice);
     softMaxPrepare<<<gridSize, blockSize>>>(n, buffer);
     cudaDeviceSynchronize();
+
+    //executing the reduction
     unsigned int procSize = n;
     while(procSize/WARP_SIZE > 0){
         softMaxReduce<<<gridSize, blockSize>>>(procSize, buffer);
@@ -437,4 +423,26 @@ NeuralUtils::callCol2Img2dNP(Matrix::Matrix2d *errors, Matrix::Matrix2d *propaBu
                                                               filterSize, stride, padSize);
     cudaDeviceSynchronize();
     return errors;
+}
+
+//buffer size = mat1->rowcount * mat1->colcount
+Matrix::Matrix2d *NeuralUtils::callRowSum(Matrix::Matrix2d *mat1, Matrix::Matrix2d* output, float* buffer) {
+    assert(mat1->rowcount == output->rowcount);
+    unsigned int block = CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y;
+    cudaMemcpy(buffer, mat1->elements, sizeof(float) * mat1->rowcount * mat1->colcount, cudaMemcpyDeviceToDevice);
+    dim3 gridSize = dim3((mat1->colcount + block - 1)/block, mat1->rowcount);
+
+    unsigned int procSize = mat1->colcount;
+    while(procSize/WARP_SIZE > 0){
+        rowReduce<<<gridSize, block>>>(mat1->colcount, procSize, buffer);
+        procSize = procSize%WARP_SIZE ? procSize/WARP_SIZE + 1 : procSize/WARP_SIZE;
+        cudaDeviceSynchronize();
+    }
+    rowReduce<<<gridSize,block>>>(mat1->colcount, procSize, buffer);
+    cudaDeviceSynchronize();
+
+    unsigned int finalizeGridSize = (mat1->rowcount + block - 1)/block;
+    rowReduceOutput<<<finalizeGridSize, block>>>(mat1->colcount, buffer, output);
+    cudaDeviceSynchronize();
+    return output;
 }

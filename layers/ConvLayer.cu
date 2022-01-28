@@ -43,6 +43,10 @@ void ConvLayer::propagate(Matrix::Matrix2d *prevErrors, Matrix::Matrix2d *prevZB
     *prevErrors * lReluD(prevZBuffer, prevZBuffer);
 }
 
-void ConvLayer::recFilters(Matrix::Matrix2d* prevFeatures) const {
-     crossA(errors, transpose(outputBuffer, outputTransit), prevFeatures);
+void ConvLayer::recFilters() const {
+     crossA(errors, transpose(featureMapBuffer, featureMapTrans), filterDBuffer);
+}
+
+void ConvLayer::recBiases() const {
+
 }
