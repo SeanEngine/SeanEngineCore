@@ -426,7 +426,7 @@ NeuralUtils::callCol2Img2dNP(Matrix::Matrix2d *errors, Matrix::Matrix2d *propaBu
 }
 
 //buffer size = mat1->rowcount * mat1->colcount
-Matrix::Matrix2d *NeuralUtils::callRowSum(Matrix::Matrix2d *mat1, Matrix::Matrix2d* output, float* buffer) {
+Matrix::Matrix2d *NeuralUtils::callRowReduce(Matrix::Matrix2d *mat1, Matrix::Matrix2d* output, float* buffer) {
     assert(mat1->rowcount == output->rowcount);
     unsigned int block = CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y;
     cudaMemcpy(buffer, mat1->elements, sizeof(float) * mat1->rowcount * mat1->colcount, cudaMemcpyDeviceToDevice);
