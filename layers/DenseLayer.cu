@@ -4,6 +4,8 @@
 
 #include "DenseLayer.cuh"
 #include "SoftmaxLayer.cuh"
+#include "ConvLayer.cuh"
+#include "MaxPoolingLayer.cuh"
 #include <cassert>
 
 string DenseLayer::getType() {
@@ -63,6 +65,16 @@ void DenseLayer::propagate(Layer *prev, Layer *next) {
         }
         //feed the errors back to previous layer
         propagate(proc->errors, proc->z);
+    }
+
+    if(prev->getType()=="CONV2D"){
+        auto* proc = (ConvLayer*)prev;
+        propagate(proc->errorJunction, proc->zJunction);
+    }
+
+    if(prev->getType()=="MAXPOOL"){
+        auto* proc = (MaxPoolingLayer*)prev;
+        propagate(proc->errorJunction1D, proc->zJunction1D);
     }
 
     recWeights(prev->nodes);

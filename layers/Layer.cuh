@@ -18,7 +18,7 @@ public:
     }
 
     int id;
-    int NODE_NUMBER;
+    unsigned int NODE_NUMBER;
     Layer* prevLayer, *nextLayer;
 
     virtual string getType();

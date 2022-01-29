@@ -13,8 +13,8 @@
 class ConvLayer : public Layer{
 public:
      Matrix::Matrix2d* filterBuffer{}, *featureMapBuffer, *zBuffer{}, *filterBiases, *filterBiasD, *filterDBuffer{};
-     Matrix::Matrix2d* featureMapTrans; //For back propagation
-     Matrix::Tensor3d* paddedFeature, *z, *output;
+     Matrix::Matrix2d* featureMapTrans, *zJunction, *errorJunction; //For back propagation
+     Matrix::Tensor3d* paddedFeature, *z, *output, *errorsJunction3D;
      Matrix::Tensor4d* filters, *filterD;
 
     Matrix::Matrix2d* propaBuffer, *errors, *filterBufferTrans{};
@@ -41,6 +41,8 @@ public:
          cudaMallocHost(&filterBuffer, sizeof(Matrix::Matrix2d));     //empty
          cudaMallocHost(&zBuffer, sizeof(Matrix::Matrix2d));     //empty
          cudaMallocHost(&filterDBuffer, sizeof(Matrix::Matrix2d));
+         cudaMallocHost(&zJunction, sizeof(Matrix::Matrix2d));
+         cudaMallocHost(&errorsJunction3D, sizeof(Matrix::Tensor3d));
 
          //alloc all convolution volumes
          paddedFeature = Matrix::callAllocElementD(featureMapSize.z, paddedFeatureSize.y,paddedFeatureSize.x);
@@ -69,9 +71,13 @@ public:
 
          //initialize buffers and alloc pointers to tensors they represents
          filterDBuffer->index(filterSize.w, filterSize.z * filterSize.y * filterSize.x, filterD->elements);
+         zJunction->index(z->elementCount, 1, z->elements);
+         errorJunction->index(errors->colcount * errors->rowcount, 1, errors->elements);
+         errorsJunction3D->index(output->depthCount, output->rowcount, output->colcount, errors->elements);
 
          this->nodes->elements = output->elements;
          cudaMalloc(&filterPropagateBuffer, sizeof(float) * errors->colcount * errors->rowcount);
+
 
          logInfo("Layer register complete : " + to_string(id) + " " + getType() + " " + to_string(NODE_NUMBER));
          logInfo("CONV INFO: filters: " + filters->toString() + " padded features: " + paddedFeature->toString()

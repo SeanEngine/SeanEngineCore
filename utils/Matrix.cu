@@ -90,6 +90,20 @@ __host__ string Matrix::Tensor3d::toString() const {
     return "(" + to_string(depthCount) + "," + to_string(rowcount) + "," + to_string(colcount) + ")";
 }
 
+__host__ void Matrix::Tensor3d::index(unsigned int depth, unsigned int row, unsigned int col, float *elements) {
+   this->rowcount = row;
+   this->colcount = col;
+   this->depthCount = depth;
+   this->elementCount = row*col*depth;
+   this->elements = elements;
+}
+__host__ void Matrix::Tensor3d::index(unsigned int depth, unsigned int row, unsigned int col) {
+    this->rowcount = row;
+    this->colcount = col;
+    this->depthCount = depth;
+    this->elementCount = row*col*depth;
+}
+
 
 __device__ float Matrix::fasterSqrt(float in) {
     float half = 0.5f * in;

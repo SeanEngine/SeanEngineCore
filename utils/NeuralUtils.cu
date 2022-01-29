@@ -30,6 +30,73 @@ __inline__ __device__ float warpCompare(float val) {
     return val;
 }
 
+__global__ void maxPool(Matrix::Tensor3d* source, Matrix::Tensor3d* record, Matrix::Tensor3d* output, int stride){
+    unsigned int col = threadIdx.x + blockIdx.x * blockDim.x;
+    unsigned int row = threadIdx.y + blockIdx.y * blockDim.y;
+    unsigned int depth = threadIdx.z + blockIdx.z * blockDim.z;
+
+    unsigned int startRow = row*stride;
+    unsigned int startCol = col*stride;
+
+    float max = -1.0e35;
+    int r,c;
+    #pragma unroll
+    for (int i=0; i< stride; i++){
+        #pragma unroll
+        for(int j=0; j< stride; j++){
+            if (source->get(depth, startRow+i, startCol+j) > max){
+                max = source->get(depth, startRow+i, startCol+j);
+                r = i, c = j;
+            }
+        }
+    }
+    record->set(depth, startRow + r, startCol + c, 1);
+    output->set(row, col, max);
+}
+
+
+__global__ void maxPool(Matrix::Tensor3d* source, Matrix::Tensor3d* output, int stride){
+    unsigned int col = threadIdx.x + blockIdx.x * blockDim.x;
+    unsigned int row = threadIdx.y + blockIdx.y * blockDim.y;
+    unsigned int depth = threadIdx.z + blockIdx.z * blockDim.z;
+
+    unsigned int startRow = row*stride;
+    unsigned int startCol = col*stride;
+
+    float max = -1.0e35;
+    int r,c;
+    #pragma unroll
+    for (int i=0; i< stride; i++){
+        #pragma unroll
+        for(int j=0; j< stride; j++){
+            if (source->get(depth, startRow+i, startCol+j) > max){
+                max = source->get(depth, startRow+i, startCol+j);
+            }
+        }
+    }
+    output->set(row, col, max);
+}
+
+__global__ void invertMaxPool(Matrix::Tensor3d* errors, Matrix::Tensor3d* record, Matrix::Tensor3d* prevErrors, int stride){
+    unsigned int col = threadIdx.x + blockIdx.x * blockDim.x;
+    unsigned int row = threadIdx.y + blockIdx.y * blockDim.y;
+    unsigned int depth = threadIdx.z + blockIdx.z * blockDim.z;
+
+    unsigned int startRow = row*stride;
+    unsigned int startCol = col*stride;
+
+    #pragma unroll
+    for (int i=0; i< stride; i++){
+        #pragma unroll
+        for(int j=0; j< stride; j++){
+            if (record->get(depth, startRow+i, startCol+j) > 0){
+                prevErrors->set(depth, startRow + i, startCol + j, errors->get(depth, row, col));
+                return;
+            }
+        }
+    }
+}
+
 __global__ void rowReduce(unsigned int colcount, unsigned int n, float* buffer){
     unsigned int globalID = threadIdx.x + blockIdx.x * blockDim.x;
     unsigned int matRowID = blockIdx.y;
@@ -289,12 +356,19 @@ Matrix::Matrix2d *NeuralUtils::callActivationLeakyRelu(Matrix::Matrix2d *mat1, M
 }
 
 Matrix::Tensor *NeuralUtils::callActivationLeakyRelu(Matrix::Tensor *mat1, Matrix::Tensor *result, float ALPHA) {
-    return nullptr;
+    unsigned int block = CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y;
+    unsigned int grid = (mat1->elementCount + block - 1)/block;
+    leakyReluActivation<<<grid, block>>>(mat1, result, ALPHA);
+    cudaDeviceSynchronize();
+    return mat1;
 }
 
 Matrix::Tensor *NeuralUtils::callDerivativeLeakyRelu(Matrix::Tensor *mat1, Matrix::Tensor *result, float ALPHA) {
-    return nullptr;
-}
+    unsigned int block = CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y;
+    unsigned int grid = (mat1->elementCount + block - 1)/block;
+    leakyReluDerivative<<<grid, block>>>(mat1, result, ALPHA);
+    cudaDeviceSynchronize();
+    return mat1;}
 
 
 //buffer can be set to null if the softmax operation is applied to matrices less than 1024 elements
@@ -445,4 +519,51 @@ Matrix::Matrix2d *NeuralUtils::callRowReduce(Matrix::Matrix2d *mat1, Matrix::Mat
     rowReduceOutput<<<finalizeGridSize, block>>>(mat1->colcount, buffer, output);
     cudaDeviceSynchronize();
     return output;
+}
+
+Matrix::Tensor3d *
+NeuralUtils::callMaxPooling(Matrix::Tensor3d *source, Matrix::Tensor3d *record, Matrix::Tensor3d *output, int stride) {
+    assert(source->rowcount % stride == 0 && source->colcount % stride == 0);
+    assert(source->elementCount == record->elementCount);
+    assert(source->rowcount == record->rowcount && source->colcount == record -> colcount);
+    assert(output->rowcount == source->rowcount / stride);
+    assert(output->colcount == source->colcount / stride);
+
+    dim3 gridSize = dim3((output->colcount + CUDA_BLOCK_SIZE_3D.x - 1)/CUDA_BLOCK_SIZE_3D.x,
+                         (output->rowcount + CUDA_BLOCK_SIZE_3D.y - 1)/CUDA_BLOCK_SIZE_3D.y,
+                         (output->depthCount + CUDA_BLOCK_SIZE_3D.z - 1)/CUDA_BLOCK_SIZE_3D.z);
+    maxPool<<<gridSize, CUDA_BLOCK_SIZE_3D>>>(source, record, output, stride);
+    cudaDeviceSynchronize();
+    return output;
+}
+
+Matrix::Tensor3d *
+NeuralUtils::callMaxPooling(Matrix::Tensor3d *source, Matrix::Tensor3d *output, int stride) {
+    assert(source->rowcount % stride == 0 && source->colcount % stride == 0);
+    assert(output->rowcount == source->rowcount / stride);
+    assert(output->colcount == source->colcount / stride);
+
+    dim3 gridSize = dim3((output->colcount + CUDA_BLOCK_SIZE_3D.x - 1)/CUDA_BLOCK_SIZE_3D.x,
+                         (output->rowcount + CUDA_BLOCK_SIZE_3D.y - 1)/CUDA_BLOCK_SIZE_3D.y,
+                         (output->depthCount + CUDA_BLOCK_SIZE_3D.z - 1)/CUDA_BLOCK_SIZE_3D.z);
+    maxPool<<<gridSize, CUDA_BLOCK_SIZE_3D>>>(source, output, stride);
+    cudaDeviceSynchronize();
+    return output;
+}
+
+Matrix::Tensor3d *
+NeuralUtils::callInvertMaxPool(Matrix::Tensor3d *errors, Matrix::Tensor3d *record, Matrix::Tensor3d *prevErrors,
+                               int stride) {
+    assert(prevErrors->rowcount % stride == 0 && prevErrors->colcount % stride == 0);
+    assert(prevErrors->elementCount == record->elementCount);
+    assert(prevErrors->rowcount == record->rowcount && prevErrors->colcount == record -> colcount);
+    assert(errors->rowcount == prevErrors->rowcount / stride);
+    assert(errors->colcount == prevErrors->colcount / stride);
+
+    dim3 gridSize = dim3((errors->colcount + CUDA_BLOCK_SIZE_3D.x - 1)/CUDA_BLOCK_SIZE_3D.x,
+                         (errors->rowcount + CUDA_BLOCK_SIZE_3D.y - 1)/CUDA_BLOCK_SIZE_3D.y,
+                         (errors->depthCount + CUDA_BLOCK_SIZE_3D.z - 1)/CUDA_BLOCK_SIZE_3D.z);
+    invertMaxPool<<<gridSize, CUDA_BLOCK_SIZE_3D>>>(errors, record, prevErrors, stride);
+    cudaDeviceSynchronize();
+    return prevErrors;
 }

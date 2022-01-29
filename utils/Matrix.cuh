@@ -85,6 +85,9 @@ public:
         __device__ void add(unsigned int depth, unsigned int row, unsigned int col, float value) const;
         __device__ void atomAdd(unsigned int depth, unsigned int row, unsigned int col, float value) const;
 
+        __host__ void index(unsigned int depth, unsigned int row, unsigned int col, float* elements);
+        __host__ void index(unsigned int depth, unsigned int row, unsigned int col);
+
         __host__ void extract2d(unsigned int depth, Matrix2d* mat) const;
         __host__ void emplace2d(unsigned int depth, Matrix2d* mat) const;
         __host__ string toString() const;

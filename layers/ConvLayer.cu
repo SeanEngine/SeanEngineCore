@@ -3,19 +3,23 @@
 //
 
 #include "ConvLayer.cuh"
+#include "MaxPoolingLayer.cuh"
 
 void ConvLayer::activate(Layer *prevLayer) {
     if(prevLayer->getType() == "CONV2D"){
         activate(((ConvLayer*)prevLayer)->output);
     }
+    if(prevLayer->getType() == "MAXPOOL"){
+        activate(((MaxPoolingLayer*)prevLayer)->output);
+    }
 }
 
 void ConvLayer::propagate(Layer *prev, Layer *next) {
     if(prevLayer->getType() == "CONV2D"){
-        if(next->getType() == "DENSE"){
-
-        }
         propagate(((ConvLayer*)prevLayer)->errors, ((ConvLayer*)prevLayer)->zBuffer);
+    }
+    if(prevLayer->getType() == "MAXPOOL"){
+        propagate(((MaxPoolingLayer*)prevLayer)->errorJunction2D, ((MaxPoolingLayer*)prevLayer)->zJunction2D);
     }
 }
 
