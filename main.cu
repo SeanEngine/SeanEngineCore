@@ -8,6 +8,7 @@
 #include "execution/ThreadControls.h"
 #include "models/DenseMLP.cuh"
 #include "layers/DenseLayer.cuh"
+#include "models/VGG16.cuh"
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgcodecs.hpp>
 
@@ -31,5 +32,7 @@ void run(){
 }
 
 int main(int argc, char **argv) {
+    auto* model = new VGG16();
+    model->registerModel();
     run();
 }

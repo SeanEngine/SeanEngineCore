@@ -42,6 +42,7 @@ public:
          cudaMallocHost(&zBuffer, sizeof(Matrix::Matrix2d));     //empty
          cudaMallocHost(&filterDBuffer, sizeof(Matrix::Matrix2d));
          cudaMallocHost(&zJunction, sizeof(Matrix::Matrix2d));
+         cudaMallocHost(&errorJunction, sizeof(Matrix::Matrix2d));
          cudaMallocHost(&errorsJunction3D, sizeof(Matrix::Tensor3d));
 
          //alloc all convolution volumes
@@ -75,7 +76,7 @@ public:
          errorJunction->index(errors->colcount * errors->rowcount, 1, errors->elements);
          errorsJunction3D->index(output->depthCount, output->rowcount, output->colcount, errors->elements);
 
-         this->nodes->elements = output->elements;
+         //this->nodes->elements = output->elements;
          cudaMalloc(&filterPropagateBuffer, sizeof(float) * errors->colcount * errors->rowcount);
 
 
