@@ -100,6 +100,27 @@ __device__ float Matrix::fasterSqrt(float in) {
     return in;
 }
 
+__global__ void tensorAdd(Matrix::Tensor* mat1, Matrix::Tensor* mat2){
+    unsigned int index = threadIdx.x + blockIdx.x * blockDim.x;
+    mat1->elements[index] = mat1->elements[index]+mat2->elements[index];
+}
+
+__global__ void tensorMinus(Matrix::Tensor* mat1, Matrix::Tensor* mat2){
+    unsigned int index = threadIdx.x + blockIdx.x * blockDim.x;
+    mat1->elements[index] = mat1->elements[index]-mat2->elements[index];
+}
+
+__global__ void tensorHadamard(Matrix::Tensor* mat1, Matrix::Tensor* mat2){
+    unsigned int index = threadIdx.x + blockIdx.x * blockDim.x;
+    mat1->elements[index] = mat1->elements[index]*mat2->elements[index];
+}
+
+__global__ void tensorMultiply(Matrix::Tensor* mat1, float val){
+    unsigned int index = threadIdx.x + blockIdx.x * blockDim.x;
+    mat1->elements[index] = mat1->elements[index]*val;
+}
+
+
 //random number fill (0-1)
 __global__ void allocRandom(long seed, Matrix::Matrix2d *mat1) {
     curandStateXORWOW_t state;
@@ -876,6 +897,42 @@ Matrix::Matrix2d *Matrix::Matrix2d::operator+=(Matrix::Matrix2d *mat2) {
 Matrix::Matrix2d *Matrix::Matrix2d::operator+=(float con) {
     return callAddition(this, con);
 }
+
+Matrix::Tensor *Matrix::Tensor::operator+(Matrix::Tensor *mat2) {
+    assert(this->elementCount == mat2->elementCount);
+    unsigned int block = CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y;
+    unsigned int grid = (this->elementCount + block - 1)/block;
+    tensorAdd<<<grid,block>>>(this,mat2);
+    cudaDeviceSynchronize();
+    return this;
+}
+
+Matrix::Tensor *Matrix::Tensor::operator-(Matrix::Tensor *mat2) {
+    assert(this->elementCount == mat2->elementCount);
+    unsigned int block = CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y;
+    unsigned int grid = (this->elementCount + block - 1)/block;
+    tensorMinus<<<grid,block>>>(this,mat2);
+    cudaDeviceSynchronize();
+    return this;
+}
+
+Matrix::Tensor *Matrix::Tensor::operator*(Matrix::Tensor *mat2) {
+    assert(this->elementCount == mat2->elementCount);
+    unsigned int block = CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y;
+    unsigned int grid = (this->elementCount + block - 1)/block;
+    tensorHadamard<<<grid,block>>>(this,mat2);
+    cudaDeviceSynchronize();
+    return this;
+}
+
+Matrix::Tensor *Matrix::Tensor::operator*(float val) {
+    unsigned int block = CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y;
+    unsigned int grid = (this->elementCount + block - 1)/block;
+    tensorMultiply<<<grid,block>>>(this,val);
+    cudaDeviceSynchronize();
+    return this;
+}
+
 
 void Matrix::Matrix2d::setH2D(unsigned int row, unsigned int col, float value) {
     assert(row < this->rowcount && col < this->colcount);

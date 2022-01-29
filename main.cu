@@ -24,12 +24,12 @@ void run(){
     model->loadDataSet();
     model->loadData();
 
-    for(int i=0; i<1e3*3; i++) {
+    for(int i=0; i<1e4*3; i++) {
         model->loadData();
         model->train();
     }
 }
 
 int main(int argc, char **argv) {
-    //run();
+    run();
 }

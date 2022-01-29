@@ -12,13 +12,14 @@
 
 class ConvLayer : public Layer{
 public:
-     Matrix::Matrix2d* filterBuffer, *featureMapBuffer, *zBuffer, *filterBiases, *filterBiasD, *filterDBuffer;
+     Matrix::Matrix2d* filterBuffer{}, *featureMapBuffer, *zBuffer{}, *filterBiases, *filterBiasD, *filterDBuffer{};
      Matrix::Matrix2d* featureMapTrans; //For back propagation
      Matrix::Tensor3d* paddedFeature, *z, *output;
      Matrix::Tensor4d* filters, *filterD;
 
-    Matrix::Matrix2d* propaBuffer, *errors, *filterBufferTrans;
+    Matrix::Matrix2d* propaBuffer, *errors, *filterBufferTrans{};
      int stride;
+    float* filterPropagateBuffer{};
 
      string getType() override;
 
@@ -70,6 +71,7 @@ public:
          filterDBuffer->index(filterSize.w, filterSize.z * filterSize.y * filterSize.x, filterD->elements);
 
          this->nodes->elements = output->elements;
+         cudaMalloc(&filterPropagateBuffer, sizeof(float) * errors->colcount * errors->rowcount);
 
          logInfo("Layer register complete : " + to_string(id) + " " + getType() + " " + to_string(NODE_NUMBER));
          logInfo("CONV INFO: filters: " + filters->toString() + " padded features: " + paddedFeature->toString()
@@ -83,8 +85,10 @@ public:
      void propagate(Matrix::Matrix2d* prevErrors, Matrix::Matrix2d *prevZBuffer);
 
      void recFilters() const;
-     void recBiases() const;
+     void recBiases();
 
+     void applyFilters(int BATCH_SIZE, float LEARNING_RATE);
+     void applyBiases(int BATCH_SIZE, float LEARNING_RATE);
 
      void activate(Layer *prevLayer) override;
      void propagate(Layer *prev, Layer *next) override;

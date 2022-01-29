@@ -12,12 +12,16 @@ void ConvLayer::activate(Layer *prevLayer) {
 
 void ConvLayer::propagate(Layer *prev, Layer *next) {
     if(prevLayer->getType() == "CONV2D"){
+        if(next->getType() == "DENSE"){
+
+        }
         propagate(((ConvLayer*)prevLayer)->errors, ((ConvLayer*)prevLayer)->zBuffer);
     }
 }
 
 void ConvLayer::learn(int BATCH_SIZE, float LEARNING_RATE) {
-    Layer::learn(BATCH_SIZE, LEARNING_RATE);
+    applyFilters(BATCH_SIZE, LEARNING_RATE);
+    applyBiases(BATCH_SIZE, LEARNING_RATE);
 }
 
 string ConvLayer::getType() {
@@ -47,6 +51,14 @@ void ConvLayer::recFilters() const {
      crossA(errors, transpose(featureMapBuffer, featureMapTrans), filterDBuffer);
 }
 
-void ConvLayer::recBiases() const {
+void ConvLayer::recBiases() {
+     filterBiasD = rowReduce(errors, filterBiasD, filterPropagateBuffer);
+}
 
+void ConvLayer::applyFilters(int BATCH_SIZE, float LEARNING_RATE) {
+     filters = (Matrix::Tensor4d*)(*filters - (*filterD * (LEARNING_RATE / (float)BATCH_SIZE)));
+}
+
+void ConvLayer::applyBiases(int BATCH_SIZE, float LEARNING_RATE) {
+     filterBiases = *filterBiases - (*filterBiasD * (LEARNING_RATE / (float)BATCH_SIZE));
 }

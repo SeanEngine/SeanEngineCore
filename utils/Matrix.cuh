@@ -67,6 +67,10 @@ public:
     public:
         unsigned int elementCount;
         float* elements;
+        Tensor* operator+(Tensor* mat2);
+        Tensor* operator-(Tensor* mat2);
+        Tensor* operator*(Tensor* mat2);
+        Tensor* operator*(float val);
     };
 
     struct Tensor3d : public Tensor{

@@ -34,7 +34,7 @@ public:
          z =Matrix::callAllocElementD( NODE_NUMBER, 1);
          weightDerivatives = Matrix::callAllocElementD(NODE_NUMBER, PREV_NODE_NUMBER);
          errors = Matrix::callAllocElementD(NODE_NUMBER, 1);
-         weightBuffer = Matrix::callAllocElementD(NODE_NUMBER, NEXT_NODE_NUMBER);
+         weightBuffer = Matrix::callAllocElementD(PREV_NODE_NUMBER, NODE_NUMBER);
          prevActivationBuffer = Matrix::callAllocElementD(1, PREV_NODE_NUMBER);
          biasDerivatives = Matrix::callAllocElementD( NODE_NUMBER, 1);
 
@@ -48,10 +48,10 @@ public:
      virtual void calcActivate(Matrix::Matrix2d* prevNodes);
 
      //calculate the errors as output layer
-     virtual void propagatingOutput(Matrix::Matrix2d* correctOut);
+     virtual void propagatingOutput(Matrix::Matrix2d *correctOut);
 
      //calculate the errors
-     virtual void propagate(Matrix::Matrix2d* nextWeights, Matrix::Matrix2d *nextErrors);
+     virtual void propagate(Matrix::Matrix2d* prevErrors, Matrix::Matrix2d* prevZ);
 
      //update the memories of weight derivatives
      void recWeights(Matrix::Matrix2d* prevActivations);

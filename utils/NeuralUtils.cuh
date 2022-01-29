@@ -82,6 +82,10 @@ public:
     static Matrix::Matrix2d* callRowReduce(Matrix::Matrix2d* mat1, Matrix::Matrix2d* output, float* buffer);
 };
 
+static Matrix::Matrix2d* rowReduce(Matrix::Matrix2d* mat1, Matrix::Matrix2d* output, float* buffer){
+    return NeuralUtils::callRowReduce(mat1, output, buffer);
+}
+
 static Matrix::Matrix2d* sigmoid(Matrix::Matrix2d* mat1, Matrix::Matrix2d* result){
     return NeuralUtils::callActivationSigmoid(mat1, result);
 }

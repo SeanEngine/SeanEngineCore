@@ -20,8 +20,8 @@ void DenseLayer::propagatingOutput(Matrix::Matrix2d *correctOut) {
     errors = *(*errors-correctOut) * lReluD(z, z);
 }
 //El = (W(l+1))^T * E(l+1) *Hadamard* relu(z(l))
-void DenseLayer::propagate(Matrix::Matrix2d *nextWeights, Matrix::Matrix2d *nextErrors) {
-    errors = *cross((transpose(nextWeights,weightBuffer)),nextErrors, errors)* lReluD(z,z);
+void DenseLayer::propagate(Matrix::Matrix2d *prevErrors, Matrix::Matrix2d *prevZ) {
+    prevErrors = *cross((transpose(weights,weightBuffer)),errors, prevErrors)* lReluD(prevZ,prevZ);
 }
 
 //add the deltas onto the recorded derivatives for averaging in batch training
@@ -55,19 +55,14 @@ void DenseLayer::propagate(Layer *prev, Layer *next) {
     assert(prev->NODE_NUMBER == this->PREV_NODE_NUMBER);
     assert(next->NODE_NUMBER == this->NEXT_NODE_NUMBER);
     //as hidden layer
-    if(next->getType()=="DENSE"){
-        auto* proc = (DenseLayer*)next;
-        propagate(proc->weights, proc->errors);
-    }
-
-    if(next->getType()=="SOFTMAX"){
-        auto* proc = (SoftmaxLayer*)next;
-        propagate(proc->weights, proc->errors);
-    }
-
-    //as output layer
-    if(next->getType()=="CONTAINER"){
-        propagatingOutput(next->nodes);
+    if(prev->getType()=="DENSE"){
+        auto* proc = (DenseLayer*)prev;
+        //as output layer
+        if(next->getType()=="CONTAINER"){
+            propagatingOutput(next->nodes);
+        }
+        //feed the errors back to previous layer
+        propagate(proc->errors, proc->z);
     }
 
     recWeights(prev->nodes);

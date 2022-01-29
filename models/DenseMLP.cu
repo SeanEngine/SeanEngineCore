@@ -125,7 +125,7 @@ void DenseMLP::train() {
         success = maxIndex1 == maxIndex2 ? success+1 : success;
 
         //back propagate
-        for (int i = (int)layers.size()-1; i > 0; i--) {
+        for (int i = (int)layers.size()-1; i > 1 ; i--) {
             layers[i]->propagate(layers[i - 1],i+1 < layers.size()? layers[i+1] : correctOut);
         }
         cudaFreeHost(debug->elements);
