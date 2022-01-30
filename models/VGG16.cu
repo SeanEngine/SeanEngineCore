@@ -32,7 +32,6 @@ void VGG16::registerModel() {
     layers.push_back(new DenseLayer(4096,4096,1000,19));
     layers.push_back(new DenseLayer(1000, 4096, 10,20));
     layers.push_back(new SoftmaxLayer(10,1000,10,21));
-
 }
 
 void VGG16::loadModel() {

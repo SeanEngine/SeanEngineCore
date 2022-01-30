@@ -98,3 +98,8 @@ float DenseLayer::calcQuadraticCost(Matrix::Matrix2d *correctOut) {
     return ret;
 }
 
+void DenseLayer::randomInit() {
+    Matrix::callAllocRandom(weights);
+    Matrix::callAllocRandom(biases);
+}
+

@@ -66,3 +66,8 @@ void ConvLayer::applyFilters(int BATCH_SIZE, float LEARNING_RATE) {
 void ConvLayer::applyBiases(int BATCH_SIZE, float LEARNING_RATE) {
      filterBiases = *filterBiases - (*filterBiasD * (LEARNING_RATE / (float)BATCH_SIZE));
 }
+
+void ConvLayer::randomInit() {
+    Matrix::callAllocRandom(filters);
+    Matrix::callAllocRandom(filterBiases);
+}

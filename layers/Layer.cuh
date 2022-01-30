@@ -40,6 +40,8 @@ public:
     //apply
     virtual void learn(int BATCH_SIZE, float LEARNING_RATE);
 
+    virtual void randomInit();
+
     //use bind params
     void activate();
 

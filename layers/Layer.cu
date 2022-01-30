@@ -43,3 +43,7 @@ void Layer::activate() {
 void Layer::propagate() {
     propagate(this->prevLayer, this->nextLayer);
 }
+
+void Layer::randomInit() {
+
+}

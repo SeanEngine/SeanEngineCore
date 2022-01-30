@@ -69,6 +69,7 @@ public:
      void activate(Layer *prev) override;
      void propagate(Layer *prev, Layer *next) override;
      void learn(int BATCH_SIZE, float LEARNING_RATE) override;
+     void randomInit() override
 };
 
 
