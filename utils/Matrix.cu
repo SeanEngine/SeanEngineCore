@@ -618,8 +618,9 @@ void Matrix::callAllocRandom(Matrix::Tensor *mat1) {
 
     QueryPerformanceFrequency(&cpuFre);
     QueryPerformanceCounter(&begin);
-    dim3 gridSize = dim3((mat1->elementCount + CUDA_BLOCK_SIZE_3D.x - 1) / CUDA_BLOCK_SIZE_3D.x);
-    allocRandom<<<gridSize, CUDA_BLOCK_SIZE.x*CUDA_BLOCK_SIZE.y>>>((long) (&begin.QuadPart), mat1);
+    unsigned int block = CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y;
+    unsigned int grid = (mat1->elementCount + block - 1)/block;
+    allocRandom<<<grid, block>>>((long) (&begin.QuadPart), mat1);
     cudaDeviceSynchronize();
 }
 

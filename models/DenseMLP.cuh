@@ -15,7 +15,7 @@
 using namespace std;
 class DenseMLP : Model{
 public:
-    struct Config : Engine::EngineConfig{
+    struct Config : EngineConfig{
         int BMP_READ_SIZE = 2390;
         int INPUT_SIZE_X = 28;
         int OUTPUT_SIZE = 10;

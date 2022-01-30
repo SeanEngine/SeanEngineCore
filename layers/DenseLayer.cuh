@@ -40,7 +40,7 @@ public:
 
          logInfo("Layer register complete : " + to_string(id) + " " + getType() + " " + to_string(NODE_NUMBER));
          logInfo("cuda memory occupation :" + to_string((double)(sizeof(float)*(5*NODE_NUMBER + 2*NODE_NUMBER*PREV_NODE_NUMBER
-         + NODE_NUMBER * NEXT_NODE_NUMBER))/(1024*1024)));
+         + NODE_NUMBER * NEXT_NODE_NUMBER))/(1024*1024)) + " MB", 0x03);
      }
      //The corresponding math formulas are recorded in the cu file for these methods;
      //these methods are overrided in the softmax layer so they are defined as virtual
@@ -69,7 +69,7 @@ public:
      void activate(Layer *prev) override;
      void propagate(Layer *prev, Layer *next) override;
      void learn(int BATCH_SIZE, float LEARNING_RATE) override;
-     void randomInit() override
+     void randomInit() override;
 };
 
 

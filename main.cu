@@ -34,5 +34,6 @@ void run(){
 int main(int argc, char **argv) {
     auto* model = new VGG16();
     model->registerModel();
+    model->loadModel();
     run();
 }

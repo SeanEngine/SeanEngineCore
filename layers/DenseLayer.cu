@@ -101,5 +101,6 @@ float DenseLayer::calcQuadraticCost(Matrix::Matrix2d *correctOut) {
 void DenseLayer::randomInit() {
     Matrix::callAllocRandom(weights);
     Matrix::callAllocRandom(biases);
+    logInfo("DENSE RANDOM INIT COMPLETE",0x01);
 }
 

@@ -12,6 +12,10 @@
 
 class VGG16 : public Model {
 public:
+    struct ModelConfig : public EngineConfig{
+
+    };
+    ModelConfig cfg = *new ModelConfig;
     vector<Layer*> layers;
     vector<Matrix::Matrix2d*> dataBatch;
     vector<Matrix::Matrix2d*> labelBatch;

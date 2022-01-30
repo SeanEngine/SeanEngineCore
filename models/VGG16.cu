@@ -8,9 +8,11 @@
 #include "../layers/MaxPoolingLayer.cuh"
 #include "../layers/DenseLayer.cuh"
 #include "../layers/SoftmaxLayer.cuh"
+#include "../layers/ImageContainer.cuh"
 
 void VGG16::registerModel() {
     logInfo("===========< REGISTERING : VGG16 >============",0x05);
+    layers.push_back(new ImageContainer(dim3(224,224,3)));
     layers.push_back(new ConvLayer(dim4(3,3,3,64),dim3(224,224,3),1,0));
     layers.push_back(new ConvLayer(dim4(3,3,64,64),dim3(224,224,64),1,1));
     layers.push_back(new MaxPoolingLayer(dim3(224,224,64),2));
@@ -35,7 +37,13 @@ void VGG16::registerModel() {
 }
 
 void VGG16::loadModel() {
-
+     if(cfg.LOAD_MODEL_FROM_SAV){
+        //load from save
+         return;
+     }
+     for(Layer* layer : layers){
+         layer->randomInit();
+     }
 }
 
 void VGG16::loadDataSet() {

@@ -7,6 +7,7 @@
 
 #include "../utils/Matrix.cuh"
 #include "Layer.cuh"
+#include "../utils/logger.cuh"
 
 class MaxPoolingLayer : public Layer{
 
@@ -32,6 +33,7 @@ public:
         errorJunction1D->index(errors->elementCount, 1, errors->elements);
         errorJunction2D->index(errors->depthCount, errors->colcount * errors->rowcount, errors->elements);
         this->stride = stride;
+        logInfo("MAX POOLING : " + record->toString() + " -> " + output->toString());
     }
 
     string getType() override;

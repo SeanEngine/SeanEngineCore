@@ -83,6 +83,10 @@ public:
          logInfo("Layer register complete : " + to_string(id) + " " + getType() + " " + to_string(NODE_NUMBER));
          logInfo("CONV INFO: filters: " + filters->toString() + " padded features: " + paddedFeature->toString()
                                   + " z: " + z->toString());
+         unsigned int memSize = filters->elementCount * 2 + paddedFeature->elementCount + featureMapBuffer->rowcount *
+                 featureMapBuffer->colcount * 2 + z->elementCount * 2 + propaBuffer->colcount * propaBuffer->rowcount
+                 + errors->colcount * errors->colcount;
+         logInfo("cuda memory occupation :" + to_string((double)memSize/(1024*1024)) + " MB", 0x03);
      }
 
      //forward convolution operations
@@ -100,7 +104,7 @@ public:
      void activate(Layer *prevLayer) override;
      void propagate(Layer *prev, Layer *next) override;
      void learn(int BATCH_SIZE, float LEARNING_RATE) override;
-     void randomInit() override
+     void randomInit() override;
 };
 
 

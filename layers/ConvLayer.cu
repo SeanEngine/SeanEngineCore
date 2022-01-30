@@ -4,6 +4,7 @@
 
 #include "ConvLayer.cuh"
 #include "MaxPoolingLayer.cuh"
+#include "ImageContainer.cuh"
 
 void ConvLayer::activate(Layer *prevLayer) {
     if(prevLayer->getType() == "CONV2D"){
@@ -11,6 +12,10 @@ void ConvLayer::activate(Layer *prevLayer) {
     }
     if(prevLayer->getType() == "MAXPOOL"){
         activate(((MaxPoolingLayer*)prevLayer)->output);
+    }
+
+    if(prevLayer->getType() == "FEATURE_CONTAINER"){
+        activate(((ImageContainer*)prevLayer)->features);
     }
 }
 
@@ -70,4 +75,5 @@ void ConvLayer::applyBiases(int BATCH_SIZE, float LEARNING_RATE) {
 void ConvLayer::randomInit() {
     Matrix::callAllocRandom(filters);
     Matrix::callAllocRandom(filterBiases);
+    logInfo("CONV RANDOM INIT COMPLETE",0x01);
 }
