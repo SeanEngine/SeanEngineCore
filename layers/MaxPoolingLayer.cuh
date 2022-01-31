@@ -17,10 +17,10 @@ public:
     int stride;
 
     MaxPoolingLayer(dim3 inputSize, int stride) : Layer((inputSize.z/stride) * (inputSize.y/stride)*(inputSize.x/stride)) {
-        output = Matrix::callAllocElementD(inputSize.z/stride, inputSize.y/stride, inputSize.x/stride);
-        errors =  Matrix::callAllocElementD(inputSize.z/stride, inputSize.y/stride, inputSize.x/stride);
-        record = Matrix::callAllocElementD(inputSize.x, inputSize.y, inputSize.z);
-        z = Matrix::callAllocElementD(inputSize.x/stride, inputSize.y/stride, inputSize.z/stride);
+        output = Matrix::callAllocElementD(inputSize.z, inputSize.y/stride, inputSize.x/stride);
+        errors =  Matrix::callAllocElementD(inputSize.z, inputSize.y/stride, inputSize.x/stride);
+        record = Matrix::callAllocElementD(inputSize.z, inputSize.y, inputSize.x);
+        z = Matrix::callAllocElementD(inputSize.z, inputSize.y/stride, inputSize.x/stride);
 
         cudaMallocHost(&zJunction1D, sizeof(float)*z->elementCount);
         cudaMallocHost(&zJunction2D, sizeof(float)*z->elementCount);

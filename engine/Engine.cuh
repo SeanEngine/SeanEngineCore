@@ -15,8 +15,10 @@ struct EngineConfig{
     //execution configs  (default)
      char* MODEL_LOAD_PATH;
      char* MODEL_SAVE_PATH;
-     char* TRAIN_DATA_PATH = "C:\\Users\\DanielSun\\Desktop\\resources\\mnist\\decompress_mnist\\train";
+     char* TRAIN_DATA_PATH = "C:\\Users\\DanielSun\\Desktop\\resources\\MLDatasets\\imagenette2\\train";
      char* TRAIN_LABEL_PATH;
+     char* TEST_DATA_PATH;
+     char* TEST_LABEL_PATH;
 
      int TRAIN_BATCH_SIZE = 100;
      float LEARNING_RATE = 0.3f;

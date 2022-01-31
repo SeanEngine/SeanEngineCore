@@ -21,6 +21,8 @@ public:
 
      //read BMP files and post process them
      static void readImgGray(int threads, dim3i size, vector<string>* fileNames, vector<Matrix::Matrix2d *>* dataset);
+
+     static void readImageRGB(int threads, dim3i size, vector<string>* fileNames, vector<Matrix::Tensor3d*>* dataset);
 };
 
 

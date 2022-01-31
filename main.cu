@@ -18,22 +18,12 @@ using namespace std;
 using namespace nvcuda;
 
 void run(){
-
-    auto *model = new DenseMLP();
-    model->registerModel();
-    model->loadModel();
-    model->loadDataSet();
-    model->loadData();
-
-    for(int i=0; i<1e4*3; i++) {
-        model->loadData();
-        model->train();
-    }
-}
-
-int main(int argc, char **argv) {
     auto* model = new VGG16();
     model->registerModel();
     model->loadModel();
+    model->loadDataSet();
+}
+
+int main(int argc, char **argv) {
     run();
 }

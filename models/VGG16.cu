@@ -32,8 +32,8 @@ void VGG16::registerModel() {
     layers.push_back(new MaxPoolingLayer(dim3(14,14,512),2));
     layers.push_back(new DenseLayer(4096,25088,4096,18));
     layers.push_back(new DenseLayer(4096,4096,1000,19));
-    layers.push_back(new DenseLayer(1000, 4096, 10,20));
-    layers.push_back(new SoftmaxLayer(10,1000,10,21));
+    layers.push_back(new DenseLayer(1000, 4096, cfg.OUTPUT_SIZE,20));
+    layers.push_back(new SoftmaxLayer(cfg.OUTPUT_SIZE,1000,cfg.OUTPUT_SIZE,21));
 }
 
 void VGG16::loadModel() {
@@ -47,7 +47,29 @@ void VGG16::loadModel() {
 }
 
 void VGG16::loadDataSet() {
+     vector<string> classes = Reader::getDirFiles(cfg.TRAIN_DATA_PATH);
+     logInfo("Reading dataset classes : ", 0x06);
+     int classIndex = 0;
 
+     //get all classes
+     for(const string& class0: classes){
+         vector<string> imgNames = Reader::getDirFiles(class0);
+
+         //read all images from each class
+         for(int i=0; i<imgNames.size(); i++){
+             auto* labelElement = Matrix::callAllocElementH(cfg.OUTPUT_SIZE,1);
+             auto* dataElement = Matrix::callAllocElementH(cfg.DATA_SIZE.z, cfg.DATA_SIZE.y, cfg.DATA_SIZE.x);
+
+             Matrix::callAllocZero(labelElement);
+             labelElement->setH2D(classIndex,0,1.0F);
+
+             dataset.push_back(dataElement);
+             labelSet.push_back(labelElement);
+         }
+         Reader::readImageRGB(cfg.CPU_THREADS, cfg.DATA_SIZE, &imgNames, &dataset);
+         logInfo("DATASET > read " + to_string(imgNames.size())+ " files for label : " + class0, 0x05);
+         classIndex++;
+     }
 }
 
 void VGG16::loadData() {

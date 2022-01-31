@@ -46,18 +46,7 @@ void DenseMLP::loadModel() {
          return;
      }
     for (Layer* layer : layers){
-        if(layer->getType() == "DENSE" ){
-            auto* temp = (DenseLayer*)layer;
-            Matrix::callAllocRandom(temp->weights);
-            Matrix::callAllocRandom(temp->biases);
-            logInfo("layer: " + layer->getType() + " random allocated");
-        }
-        if(layer->getType() == "SOFTMAX"){
-            auto* temp = (SoftmaxLayer*)layer;
-            Matrix::callAllocRandom(temp->weights);
-            Matrix::callAllocRandom(temp->biases);
-            logInfo("layer: " + layer->getType() + " random allocated");
-        }
+        layer->randomInit();
     }
 }
 

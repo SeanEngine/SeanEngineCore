@@ -9,17 +9,19 @@
 #include "Model.cuh"
 #include <vector>
 #include "../layers/Layer.cuh"
+#include "../io/Reader.cuh"
 
 class VGG16 : public Model {
 public:
     struct ModelConfig : public EngineConfig{
-
+         dim3i DATA_SIZE = dim3i(224,224,3);
+         int OUTPUT_SIZE = 10;
     };
     ModelConfig cfg = *new ModelConfig;
     vector<Layer*> layers;
-    vector<Matrix::Matrix2d*> dataBatch;
+    vector<Matrix::Tensor3d*> dataBatch;
     vector<Matrix::Matrix2d*> labelBatch;
-    vector<Matrix::Matrix2d*> dataset;
+    vector<Matrix::Tensor3d*> dataset;
     vector<Matrix::Matrix2d*> labelSet;
 
     void registerModel() override;

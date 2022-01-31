@@ -13,6 +13,7 @@ string MaxPoolingLayer::getType() {
 void MaxPoolingLayer::activate(Layer *prevLayer) {
     if(prevLayer->getType() == "CONV2D"){
         auto* proc = (ConvLayer*)prevLayer;
+        Matrix::callAllocZero(record);
         NeuralUtils::callMaxPooling(proc->output, record, output, stride);
         NeuralUtils::callMaxPooling(proc->z, z, stride);
     }
