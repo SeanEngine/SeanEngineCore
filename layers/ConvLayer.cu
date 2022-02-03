@@ -20,12 +20,16 @@ void ConvLayer::activate(Layer *prevLayer) {
 }
 
 void ConvLayer::propagate(Layer *prev, Layer *next) {
-    if(prevLayer->getType() == "CONV2D"){
-        propagate(((ConvLayer*)prevLayer)->errors, ((ConvLayer*)prevLayer)->zBuffer);
+    if(prev->getType() == "CONV2D"){
+        propagate(((ConvLayer*)prev)->errors, ((ConvLayer*)prev)->zBuffer);
     }
-    if(prevLayer->getType() == "MAXPOOL"){
-        propagate(((MaxPoolingLayer*)prevLayer)->errorJunction2D, ((MaxPoolingLayer*)prevLayer)->zJunction2D);
+    if(prev->getType() == "MAXPOOL"){
+        propagate(((MaxPoolingLayer*)prev)->errorJunction2D, ((MaxPoolingLayer*)prev)->zJunction2D);
     }
+    recFilters();
+    recBiases();
+    Matrix::callAllocZero(errors);
+    Matrix::callAllocZero(zBuffer);
 }
 
 void ConvLayer::learn(int BATCH_SIZE, float LEARNING_RATE) {
@@ -40,7 +44,7 @@ string ConvLayer::getType() {
 void ConvLayer::activate(Matrix::Tensor3d *prevFeatures) {
     assert(prevFeatures->rowcount == prevFeatures->colcount);
     assert(prevFeatures->rowcount == paddedFeature->rowcount - (filters->rowcount/2)*2);
-    pad3D(prevFeatures, paddedFeature, (filters->rowcount/2)*2);
+    pad3D(prevFeatures, paddedFeature, (filters->rowcount/2));
     conv2D(paddedFeature, filters, z, stride, filterBuffer, featureMapBuffer, zBuffer, filterBiases);
     lRelu(z, output);
 }
@@ -50,7 +54,7 @@ void ConvLayer::propagate(Matrix::Matrix2d *prevErrors, Matrix::Matrix2d *prevZB
     assert(prevErrors->rowcount == paddedFeature->depthCount && prevErrors->colcount == (
             pow(paddedFeature->rowcount-(filters->rowcount/2)*2,2)
         ));
-    unsigned int padSize = (filters->rowcount/2)*2;
+    unsigned int padSize = (filters->rowcount/2);
     propaBuffer = cross(transpose(filterBuffer, filterBufferTrans), errors, propaBuffer);
     col2img2D(prevErrors, propaBuffer, output->rowcount, paddedFeature->rowcount-2*padSize,filters->rowcount, stride, padSize);
     *prevErrors * lReluD(prevZBuffer, prevZBuffer);

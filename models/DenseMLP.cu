@@ -83,6 +83,23 @@ void DenseMLP::loadData() {
     }
 }
 
+int DenseMLP::calcCorrection(int success){
+    //calculate correction
+    int maxIndex1 = 0, maxIndex2 = 0;
+    auto* debug = Matrix::callAllocElementH(DenseMLP::cfg.OUTPUT_SIZE, 1);
+    cudaMemcpy(debug->elements, layers[3]->nodes->elements, sizeof(float) * cfg.OUTPUT_SIZE, cudaMemcpyDeviceToHost);
+    for(int i=0; i< cfg.OUTPUT_SIZE; i++) {
+        maxIndex1 = *(debug->elements + i) > *(debug->elements + maxIndex1) ? i : maxIndex1;
+    }
+    cudaMemcpy(debug->elements, correctOut->nodes->elements, sizeof(float) * cfg.OUTPUT_SIZE, cudaMemcpyDeviceToHost);
+    for(int i=0; i< cfg.OUTPUT_SIZE; i++){
+        maxIndex2 = *(debug->elements + i) > *(debug->elements + maxIndex2) ? i: maxIndex2;
+    }
+    cudaFreeHost(debug->elements);
+    cudaFreeHost(debug);
+    return maxIndex1 == maxIndex2 ? success+1 : success;
+}
+
 void DenseMLP::train() {
     int success=0;
     pastCost=0;
@@ -101,24 +118,12 @@ void DenseMLP::train() {
         pastCost+=cost;
 
         //calculate correction
-        int maxIndex1 = 0, maxIndex2 = 0;
-        auto* debug = Matrix::callAllocElementH(DenseMLP::cfg.OUTPUT_SIZE, 1);
-        cudaMemcpy(debug->elements, layers[3]->nodes->elements, sizeof(float) * cfg.OUTPUT_SIZE, cudaMemcpyDeviceToHost);
-        for(int i=0; i< cfg.OUTPUT_SIZE; i++) {
-            maxIndex1 = *(debug->elements + i) > *(debug->elements + maxIndex1) ? i : maxIndex1;
-        }
-        cudaMemcpy(debug->elements, correctOut->nodes->elements, sizeof(float) * cfg.OUTPUT_SIZE, cudaMemcpyDeviceToHost);
-        for(int i=0; i< cfg.OUTPUT_SIZE; i++){
-            maxIndex2 = *(debug->elements + i) > *(debug->elements + maxIndex2) ? i: maxIndex2;
-        }
-        success = maxIndex1 == maxIndex2 ? success+1 : success;
+        success = calcCorrection(success);
 
         //back propagate
         for (int i = (int)layers.size()-1; i > 0 ; i--) {
             layers[i]->propagate(layers[i - 1],i+1 < layers.size()? layers[i+1] : correctOut);
         }
-        cudaFreeHost(debug->elements);
-        cudaFreeHost(debug);
     }
 
 

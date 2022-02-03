@@ -36,12 +36,12 @@ __device__ void Matrix::Matrix2d::atomAdd(unsigned int row, unsigned int col, fl
 }
 
 __device__ float Matrix::Tensor3d::get(unsigned int depth, unsigned int row, unsigned int col) const {
-    if(row >= rowcount && col >= colcount && depth >= depthCount) return 0.0f;
+    if(row >= rowcount || col >= colcount || depth >= depthCount) return 0.0f;
     return this->elements[depth * this->rowcount * this->colcount + row * this->colcount + col];
 }
 
 __device__ float Matrix::Tensor3d::get(unsigned int depth, unsigned int offset) const {
-    if(offset >= rowcount * colcount && depth >= depthCount) return 0.0f;
+    if(offset >= rowcount * colcount || depth >= depthCount) return 0.0f;
     return this->elements[depth * this->rowcount * this->colcount + offset];
 }
 
@@ -651,6 +651,25 @@ Matrix::Matrix2d *Matrix::callCopyH2D(Matrix::Matrix2d *src, Matrix::Matrix2d *d
     cudaMemcpy(dist->elements, src->elements, sizeof(float) * src->rowcount * src->colcount, cudaMemcpyHostToDevice);
     return dist;
 }
+
+Matrix::Tensor *Matrix::callCopyD2D(Matrix::Tensor *src, Tensor* dist) {
+    assert(src->elementCount == dist->elementCount);
+    cudaMemcpy(dist->elements, src->elements, sizeof(float) * src->elementCount, cudaMemcpyDeviceToDevice);
+    return dist;
+}
+
+Matrix::Tensor *Matrix::callCopyD2H(Matrix::Tensor *src, Tensor* dist) {
+    assert(src->elementCount == dist->elementCount);
+    cudaMemcpy(dist->elements, src->elements, sizeof(float) * src->elementCount, cudaMemcpyDeviceToHost);
+    return dist;
+}
+
+Matrix::Tensor *Matrix::callCopyH2D(Matrix::Tensor *src, Tensor* dist) {
+    assert(src->elementCount == dist->elementCount);
+    cudaMemcpy(dist->elements, src->elements, sizeof(float) * src->elementCount, cudaMemcpyHostToDevice);
+    return dist;
+}
+
 
 
 

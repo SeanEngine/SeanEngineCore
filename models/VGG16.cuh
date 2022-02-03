@@ -24,6 +24,8 @@ public:
     vector<Matrix::Tensor3d*> dataset;
     vector<Matrix::Matrix2d*> labelSet;
 
+    int calcCorrection(int success, Layer* correct);
+
     void registerModel() override;
     void loadModel() override;
     void loadDataSet() override;

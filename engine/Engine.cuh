@@ -21,7 +21,7 @@ struct EngineConfig{
      char* TEST_LABEL_PATH;
 
      int TRAIN_BATCH_SIZE = 100;
-     float LEARNING_RATE = 0.3f;
+     float LEARNING_RATE = 0.003f;
      bool LOAD_MODEL_FROM_SAV = false;
 };
 

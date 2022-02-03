@@ -20,8 +20,9 @@ void MaxPoolingLayer::activate(Layer *prevLayer) {
 }
 
 void MaxPoolingLayer::propagate(Layer *prev, Layer *next) {
-    if(prevLayer->getType() == "CONV2D"){
-        auto* proc = (ConvLayer*)prevLayer;
+
+    if(prev->getType() == "CONV2D"){
+        auto* proc = (ConvLayer*)prev;
         NeuralUtils::callInvertMaxPool(errors, record, proc->errorsJunction3D, stride);
     }
 }

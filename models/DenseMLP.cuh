@@ -31,6 +31,8 @@ public:
     vector<Matrix::Matrix2d*> dataset;
     vector<Matrix::Matrix2d*> labelSet;
 
+    int calcCorrection(int success);
+
     void registerModel() override;
     void loadModel() override;
     void loadDataSet() override;

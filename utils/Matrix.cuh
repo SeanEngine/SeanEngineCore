@@ -132,6 +132,11 @@ public:
     static Matrix2d* callCopyD2H(Matrix2d *src, Matrix2d* dist);
     static Matrix2d* callCopyH2D(Matrix2d *src, Matrix2d* dist);
 
+    static Tensor* callCopyD2D(Tensor* src, Tensor* dist);
+    static Tensor* callCopyD2H(Tensor* src, Tensor* dist);
+    static Tensor* callCopyH2D(Tensor* src, Tensor* dist);
+
+
     //method callings
     static Matrix2d* callCross(Matrix2d* mat1, Matrix2d* mat2, Matrix2d* result);
     static Matrix2d* callCrossWMMA(Matrix2d *mat1, Matrix2d *mat2, Matrix2d *result);
@@ -178,6 +183,18 @@ static Matrix::Matrix2d* copyD2H(Matrix::Matrix2d* src, Matrix::Matrix2d* dist){
 }
 
 static Matrix::Matrix2d* copyH2D(Matrix::Matrix2d* src, Matrix::Matrix2d* dist){
+    return Matrix::callCopyH2D(src,dist);
+}
+
+static Matrix::Tensor* copyD2D(Matrix::Tensor* src, Matrix::Tensor* dist){
+    return Matrix::callCopyD2D(src, dist);
+}
+
+static Matrix::Tensor* copyD2H(Matrix::Tensor* src, Matrix::Tensor* dist){
+    return Matrix::callCopyD2H(src,dist);
+}
+
+static Matrix::Tensor* copyH2D(Matrix::Tensor* src, Matrix::Tensor* dist){
     return Matrix::callCopyH2D(src,dist);
 }
 

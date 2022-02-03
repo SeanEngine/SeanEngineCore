@@ -17,7 +17,7 @@ public:
      Matrix::Tensor3d* paddedFeature, *z, *output, *errorsJunction3D;
      Matrix::Tensor4d* filters, *filterD;
 
-    Matrix::Matrix2d* propaBuffer, *errors, *filterBufferTrans{};
+    Matrix::Matrix2d* propaBuffer, *errors, *filterBufferTrans;
      int stride;
     float* filterPropagateBuffer{};
 
@@ -60,6 +60,7 @@ public:
          featureMapBuffer = Matrix::callAllocElementD(filterSize.x*filterSize.y*featureMapSize.z,
                                    z->rowcount * z->colcount);
          featureMapTrans = Matrix::callAllocElementD(featureMapBuffer->colcount, featureMapBuffer->rowcount);
+         filterBufferTrans = Matrix::callAllocElementD(filterSize.x * filterSize.y * filterSize.z, filterSize.w);
 
 
          //this is used when we propagate the errors of this layer back to lower level layers
@@ -68,7 +69,7 @@ public:
 
          //the error of this layer stored as 2d matrix for easier computation
          errors = Matrix::callAllocElementD(filterSize.w, ((paddedFeatureSize.y-filterSize.y)/stride+1) *
-                                            (paddedFeatureSize.y-filterSize.y)/stride+1);
+                 ((paddedFeatureSize.y-filterSize.y)/stride+1));
 
          //initialize buffers and alloc pointers to tensors they represents
          filterDBuffer->index(filterSize.w, filterSize.z * filterSize.y * filterSize.x, filterD->elements);
@@ -76,7 +77,8 @@ public:
          errorJunction->index(errors->colcount * errors->rowcount, 1, errors->elements);
          errorsJunction3D->index(output->depthCount, output->rowcount, output->colcount, errors->elements);
 
-         //this->nodes->elements = output->elements;
+         cudaMallocHost(&this->nodes, sizeof(Matrix::Matrix2d));
+         this->nodes->index(output->elementCount, 1, output->elements);
          cudaMalloc(&filterPropagateBuffer, sizeof(float) * errors->colcount * errors->rowcount);
 
 

@@ -21,7 +21,7 @@ __global__ void genTens3D(Matrix::Tensor3d* target, const uchar* in){
     unsigned int row = blockIdx.y * blockDim.y + threadIdx.y;
     unsigned int col = blockIdx.x * blockDim.x + threadIdx.x;
     float value = row<target->rowcount && col<target->colcount ? (float)(in[(row * target->colcount + col)*3 + depth]) : 0.0f;
-    target->set(depth, row, col, value);
+    target->set(depth, row, col, value / 256.0f);
 }
 
 void ImgProcGray(vector<void*>* args, dim3i blockSize, dim3i threadId, int* executionFlags){

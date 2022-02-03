@@ -50,8 +50,8 @@ __global__ void maxPool(Matrix::Tensor3d* source, Matrix::Tensor3d* record, Matr
             }
         }
     }
-    record->set(depth, startRow + r, startCol + c, 1);
-    output->set(row, col, max);
+    record->set(depth, startRow + r, startCol + c, 1.0f);
+    output->set(depth, row, col, max);
 }
 
 
@@ -64,7 +64,6 @@ __global__ void maxPool(Matrix::Tensor3d* source, Matrix::Tensor3d* output, int 
     unsigned int startCol = col*stride;
 
     float max = -1.0e35;
-    int r,c;
     #pragma unroll
     for (int i=0; i< stride; i++){
         #pragma unroll
@@ -74,7 +73,7 @@ __global__ void maxPool(Matrix::Tensor3d* source, Matrix::Tensor3d* output, int 
             }
         }
     }
-    output->set(row, col, max);
+    output->set(depth, row, col, max);
 }
 
 __global__ void invertMaxPool(Matrix::Tensor3d* errors, Matrix::Tensor3d* record, Matrix::Tensor3d* prevErrors, int stride){
