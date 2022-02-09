@@ -140,7 +140,6 @@ void VGG16::train() {
 
     logInfo("Batch trained with cost: " + to_string(pastCost/(float)cfg.TRAIN_BATCH_SIZE) +
             " success rate: " + to_string((float)success/(float)cfg.TRAIN_BATCH_SIZE));
-    Matrix::inspect(((ConvLayer*)layers[1])->errors);
 
 }
 

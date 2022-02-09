@@ -54,7 +54,6 @@ __global__ void maxPool(Matrix::Tensor3d* source, Matrix::Tensor3d* record, Matr
     output->set(depth, row, col, max);
 }
 
-
 __global__ void maxPool(Matrix::Tensor3d* source, Matrix::Tensor3d* output, int stride){
     unsigned int col = threadIdx.x + blockIdx.x * blockDim.x;
     unsigned int row = threadIdx.y + blockIdx.y * blockDim.y;
@@ -319,6 +318,7 @@ Matrix::Matrix2d *NeuralUtils::callActivationSigmoid(Matrix::Matrix2d *mat1) {
                          (mat1->rowcount + CUDA_BLOCK_SIZE.y - 1) / CUDA_BLOCK_SIZE.y);
     sigmoidActivation<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError()==0);
     return mat1;
 }
 
@@ -327,7 +327,8 @@ Matrix::Matrix2d *NeuralUtils::callActivationSigmoid(Matrix::Matrix2d *mat1, Mat
                          (mat1->rowcount + CUDA_BLOCK_SIZE.y - 1) / CUDA_BLOCK_SIZE.y);
     sigmoidActivation<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1, result);
     cudaDeviceSynchronize();
-    return result;
+    return result;    assert(cudaGetLastError()==0);
+
 }
 
 Matrix::Matrix2d *NeuralUtils::callDerivativeSigmoid(Matrix::Matrix2d *mat1, Matrix::Matrix2d *result) {
@@ -335,6 +336,7 @@ Matrix::Matrix2d *NeuralUtils::callDerivativeSigmoid(Matrix::Matrix2d *mat1, Mat
                          (mat1->rowcount + CUDA_BLOCK_SIZE.y - 1) / CUDA_BLOCK_SIZE.y);
     sigmoidDerivative<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1, result);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError()==0);
     return result;
 }
 
@@ -343,6 +345,7 @@ Matrix::Matrix2d *NeuralUtils::callDerivativeLeakyRelu(Matrix::Matrix2d *mat1, M
                          (mat1->rowcount + CUDA_BLOCK_SIZE.y - 1) / CUDA_BLOCK_SIZE.y);
     leakyReluDerivative<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1, result, ALPHA);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError()==0);
     return result;
 }
 
@@ -351,6 +354,7 @@ Matrix::Matrix2d *NeuralUtils::callActivationLeakyRelu(Matrix::Matrix2d *mat1, M
                          (mat1->rowcount + CUDA_BLOCK_SIZE.y - 1) / CUDA_BLOCK_SIZE.y);
     leakyReluActivation<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1, result, ALPHA);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError()==0);
     return result;
 }
 
@@ -359,6 +363,7 @@ Matrix::Tensor *NeuralUtils::callActivationLeakyRelu(Matrix::Tensor *mat1, Matri
     unsigned int grid = (mat1->elementCount + block - 1)/block;
     leakyReluActivation<<<grid, block>>>(mat1, result, ALPHA);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError()==0);
     return mat1;
 }
 
@@ -367,8 +372,9 @@ Matrix::Tensor *NeuralUtils::callDerivativeLeakyRelu(Matrix::Tensor *mat1, Matri
     unsigned int grid = (mat1->elementCount + block - 1)/block;
     leakyReluDerivative<<<grid, block>>>(mat1, result, ALPHA);
     cudaDeviceSynchronize();
-    return mat1;}
-
+    assert(cudaGetLastError()==0);
+    return mat1;
+}
 
 //buffer can be set to null if the softmax operation is applied to matrices less than 1024 elements
 //call the softmax activation
@@ -388,6 +394,8 @@ Matrix::Matrix2d *NeuralUtils::callSoftMax(Matrix::Matrix2d *mat1, Matrix::Matri
     cudaMemcpy(buffer, mat1->elements, sizeof(float) *n, cudaMemcpyDeviceToDevice);
     softMaxPrepare<<<gridSize, blockSize>>>(n, buffer);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError()==0);
+
 
     //executing the reduction
     unsigned int procSize = n;
@@ -400,6 +408,7 @@ Matrix::Matrix2d *NeuralUtils::callSoftMax(Matrix::Matrix2d *mat1, Matrix::Matri
     cudaDeviceSynchronize();
     softMaxActivate<<<gridSize, blockSize>>>(n, buffer, result->elements);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError()==0);
     return result;
 }
 
@@ -407,11 +416,13 @@ Matrix::Matrix2d *
 NeuralUtils::callSoftMaxDerivatives(Matrix::Matrix2d *mat1, Matrix::Matrix2d *correctOut, Matrix::Matrix2d *result) {
     assert(mat1->rowcount == correctOut->rowcount && mat1->rowcount == result->rowcount);
     assert(mat1->colcount == 1 && result->colcount == 1 && correctOut->colcount==1);
+    assert(correctOut!=nullptr);
     unsigned int n =  mat1->rowcount;
     unsigned int gridSize = n/ (CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y) + 1;
     unsigned int blockSize = CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y;
     softMaxDerivative<<<gridSize, blockSize>>>(mat1, correctOut, result);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError()==0);
     return result;
 }
 
@@ -421,6 +432,7 @@ Matrix::Matrix2d *NeuralUtils::callSoftMaxCost(Matrix::Matrix2d *mat1,Matrix::Ma
     unsigned int blockSize = CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y;
     softMaxCost<<<gridSize, blockSize>>>(mat1, correctOut, result);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError()==0);
     return result;
 }
 // filter: rowcount = colcount
@@ -443,12 +455,11 @@ NeuralUtils::callConv2d(Matrix::Tensor3d *mat1, Matrix::Tensor4d *filter, Matrix
     filterBuffer->index(filter->wCount, filter->depthCount * filter->rowcount * filter->colcount, filter->elements);
     outputBuffer->index(result->depthCount, result->rowcount * result->colcount, result->elements);
 
-    cudaDeviceSynchronize();
     img2col(mat1, featureBuffer, result->rowcount, filter->rowcount, stride);
 
     //cross
     crossA(filterBuffer, featureBuffer, callAllocConvBias(outputBuffer, biases));
-    cudaDeviceSynchronize();
+    assert(cudaGetLastError()==0);
     return result;
 }
 
@@ -462,6 +473,7 @@ Matrix::Tensor3d *NeuralUtils::padding3d(Matrix::Tensor3d *mat1, Matrix::Tensor3
                         ,(mat1->depthCount + CUDA_BLOCK_SIZE_3D.z -1)/CUDA_BLOCK_SIZE_3D.z);
     pad3d<<<gridSize, CUDA_BLOCK_SIZE_3D>>>(mat1,output,padSize);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError()==0);
     return output;
 }
 
@@ -471,9 +483,9 @@ Matrix::Matrix2d *NeuralUtils::callAllocConvBias(Matrix::Matrix2d *outputBuffer,
                          (outputBuffer->rowcount + CUDA_BLOCK_SIZE.y-1)/CUDA_BLOCK_SIZE.y);
     allocConvBias<<<gridSize, CUDA_BLOCK_SIZE>>>(outputBuffer, bias);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError()==0);
     return outputBuffer;
 }
-
 
 Matrix::Matrix2d *
 NeuralUtils::callImg2Col(Matrix::Tensor3d *featureMaps, Matrix::Matrix2d *featureBuffer, unsigned int outputHeight,
@@ -483,6 +495,7 @@ NeuralUtils::callImg2Col(Matrix::Tensor3d *featureMaps, Matrix::Matrix2d *featur
                                 (featureBuffer->rowcount/(filterSize*filterSize) + CUDA_BLOCK_SIZE.y-1)/ CUDA_BLOCK_SIZE.y);
     imgToCol<<<featureGridSize, CUDA_BLOCK_SIZE>>>(featureMaps, featureBuffer, outputHeight, filterSize, stride);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError()==0);
     return featureBuffer;
 }
 
@@ -495,6 +508,7 @@ NeuralUtils::callCol2Img2dNP(Matrix::Matrix2d *errors, Matrix::Matrix2d *propaBu
     colToImg2DNoPadding<<<featureGridSize, CUDA_BLOCK_SIZE>>>(errors, propaBuffer, outputHeight, sourceHeight,
                                                               filterSize, stride, padSize);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError()==0);
     return errors;
 }
 
@@ -517,6 +531,7 @@ Matrix::Matrix2d *NeuralUtils::callRowReduce(Matrix::Matrix2d *mat1, Matrix::Mat
     unsigned int finalizeGridSize = (mat1->rowcount + block - 1)/block;
     rowReduceOutput<<<finalizeGridSize, block>>>(mat1->colcount, buffer, output);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError()==0);
     return output;
 }
 
@@ -533,6 +548,7 @@ NeuralUtils::callMaxPooling(Matrix::Tensor3d *source, Matrix::Tensor3d *record, 
                          (output->depthCount + CUDA_BLOCK_SIZE_3D.z - 1)/CUDA_BLOCK_SIZE_3D.z);
     maxPool<<<gridSize, CUDA_BLOCK_SIZE_3D>>>(source, record, output, stride);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError()==0);
     return output;
 }
 
@@ -547,6 +563,7 @@ NeuralUtils::callMaxPooling(Matrix::Tensor3d *source, Matrix::Tensor3d *output, 
                          (output->depthCount + CUDA_BLOCK_SIZE_3D.z - 1)/CUDA_BLOCK_SIZE_3D.z);
     maxPool<<<gridSize, CUDA_BLOCK_SIZE_3D>>>(source, output, stride);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError()==0);
     return output;
 }
 
@@ -564,5 +581,6 @@ NeuralUtils::callInvertMaxPool(Matrix::Tensor3d *errors, Matrix::Tensor3d *recor
                          (errors->depthCount + CUDA_BLOCK_SIZE_3D.z - 1)/CUDA_BLOCK_SIZE_3D.z);
     invertMaxPool<<<gridSize, CUDA_BLOCK_SIZE_3D>>>(errors, record, prevErrors, stride);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError()==0);
     return prevErrors;
 }

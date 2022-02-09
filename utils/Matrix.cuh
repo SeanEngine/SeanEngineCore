@@ -12,6 +12,7 @@
 #include <mma.h>
 #include <cassert>
 #include <string>
+#include "logger.cuh"
 
 static const dim3 CUDA_BLOCK_SIZE = dim3(16, 16);
 static const dim3 CUDA_BLOCK_SIZE_3D = dim3(16,16,4);
@@ -143,6 +144,7 @@ public:
     static Matrix2d* callCrossTilingWMMA(Matrix2d *mat1, Matrix2d *mat2, Matrix2d *result);
     static Matrix2d* callCrossPrefetching(Matrix2d *mat1, Matrix2d *mat2, Matrix2d *result);  //A*B
     static Matrix2d* callCrossPrefetchingA(Matrix2d *mat1, Matrix2d *mat2, Matrix2d *result);  //A*B + C
+    static Matrix2d* callCrossTensorA(Matrix2d *mat1, Matrix2d *mat2, Matrix2d *result);
     static Matrix2d* callCrossCompOpt(Matrix2d* mat1, Matrix2d* mat2, Matrix2d* result);
     static Matrix2d* callCrossPOLD(Matrix2d* mat1, Matrix2d* mat2, Matrix2d* result);
     static Matrix2d* callTranspose(Matrix2d* mat1, Matrix2d* result);
@@ -163,10 +165,12 @@ public:
 
 //method that does not need the class name (for clarity)
 static Matrix::Matrix2d* cross(Matrix::Matrix2d* mat1, Matrix::Matrix2d* mat2, Matrix::Matrix2d* result) {
+    if(mat1->colcount%8==0 && result->colcount%16==0) return Matrix::callCrossWMMA(mat1, mat2, result);
     return Matrix::callCrossPrefetching(mat1, mat2, result);
 }
 
 static Matrix::Matrix2d* crossA(Matrix::Matrix2d* mat1, Matrix::Matrix2d* mat2, Matrix::Matrix2d* result){
+    //if(mat1->colcount%8==0 && result->colcount%16==0) return Matrix::callCrossTensorA(mat1, mat2, result);
     return Matrix::callCrossPrefetchingA(mat1,mat2,result);
 }
 

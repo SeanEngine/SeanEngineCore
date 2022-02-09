@@ -36,54 +36,58 @@ __device__ void Matrix::Matrix2d::atomAdd(unsigned int row, unsigned int col, fl
 }
 
 __device__ float Matrix::Tensor3d::get(unsigned int depth, unsigned int row, unsigned int col) const {
-    if(row >= rowcount || col >= colcount || depth >= depthCount) return 0.0f;
+    if (row >= rowcount || col >= colcount || depth >= depthCount) return 0.0f;
     return this->elements[depth * this->rowcount * this->colcount + row * this->colcount + col];
 }
 
 __device__ float Matrix::Tensor3d::get(unsigned int depth, unsigned int offset) const {
-    if(offset >= rowcount * colcount || depth >= depthCount) return 0.0f;
+    if (offset >= rowcount * colcount || depth >= depthCount) return 0.0f;
     return this->elements[depth * this->rowcount * this->colcount + offset];
 }
 
 __device__ void Matrix::Tensor3d::set(unsigned int depth, unsigned int row, unsigned int col, float value) const {
-    if(row < rowcount && col < colcount && depth < depthCount)
+    if (row < rowcount && col < colcount && depth < depthCount)
         this->elements[depth * this->rowcount * this->colcount + row * this->colcount + col] = value;
 }
 
 __device__ void Matrix::Tensor3d::set(unsigned int depth, unsigned int offset, float value) const {
-    if(offset < rowcount * colcount && depth < depthCount)
-         this->elements[depth * this->rowcount * this->colcount + offset] = value;
+    if (offset < rowcount * colcount && depth < depthCount)
+        this->elements[depth * this->rowcount * this->colcount + offset] = value;
 }
 
-__device__ void Matrix::Tensor3d::add(unsigned int depth, unsigned int row, unsigned int col, float value) const  {
-    if(row < rowcount && col < colcount && depth < depthCount)
+__device__ void Matrix::Tensor3d::add(unsigned int depth, unsigned int row, unsigned int col, float value) const {
+    if (row < rowcount && col < colcount && depth < depthCount)
         this->elements[depth * this->rowcount * this->colcount + row * this->colcount + col] += value;
 }
 
 __device__ void Matrix::Tensor3d::atomAdd(unsigned int depth, unsigned int row, unsigned int col, float value) const {
-    if(row < rowcount && col < colcount && depth < depthCount)
+    if (row < rowcount && col < colcount && depth < depthCount)
         atomicAdd(elements + depth * this->rowcount * this->colcount + row * this->colcount + col, value);
 }
 
 
 __device__ float Matrix::Tensor4d::get(unsigned int w, unsigned int depth, unsigned int row, unsigned int col) const {
-    if(row >= rowcount && col >= colcount && depth >= depthCount && w > wCount) return 0.0f;
-    return this->elements[w*depthCount*rowcount*colcount + depth*rowcount*colcount + row*colcount + col];
+    if (row >= rowcount && col >= colcount && depth >= depthCount && w > wCount) return 0.0f;
+    return this->elements[w * depthCount * rowcount * colcount + depth * rowcount * colcount + row * colcount + col];
 }
 
-__device__ void Matrix::Tensor4d::set(unsigned int w, unsigned int depth, unsigned int row, unsigned int col, float value) const {
-    if(row < rowcount && col < colcount && depth < depthCount && w < wCount)
-         this->elements[w*depthCount*rowcount*colcount + depth*rowcount*colcount + row*colcount + col] = value;
+__device__ void
+Matrix::Tensor4d::set(unsigned int w, unsigned int depth, unsigned int row, unsigned int col, float value) const {
+    if (row < rowcount && col < colcount && depth < depthCount && w < wCount)
+        this->elements[w * depthCount * rowcount * colcount + depth * rowcount * colcount + row * colcount +
+                       col] = value;
 }
 
-__host__ void Matrix::Tensor3d::extract2d(unsigned int depth, Matrix2d* mat) const {
+__host__ void Matrix::Tensor3d::extract2d(unsigned int depth, Matrix2d *mat) const {
     assert(mat->rowcount == rowcount && mat->colcount == colcount && depth < depthCount);
-    cudaMemcpy(mat->elements, elements + depth * rowcount * colcount, sizeof(float) * rowcount * colcount, cudaMemcpyDeviceToDevice);
+    cudaMemcpy(mat->elements, elements + depth * rowcount * colcount, sizeof(float) * rowcount * colcount,
+               cudaMemcpyDeviceToDevice);
 }
 
 __host__ void Matrix::Tensor3d::emplace2d(unsigned int depth, Matrix::Matrix2d *mat) const {
     assert(mat->rowcount == rowcount && mat->colcount == colcount && depth < depthCount);
-    cudaMemcpy(elements + depth * rowcount * colcount, mat->elements, sizeof(float) * rowcount * colcount, cudaMemcpyDeviceToDevice);
+    cudaMemcpy(elements + depth * rowcount * colcount, mat->elements, sizeof(float) * rowcount * colcount,
+               cudaMemcpyDeviceToDevice);
 }
 
 __host__ string Matrix::Tensor3d::toString() const {
@@ -91,17 +95,18 @@ __host__ string Matrix::Tensor3d::toString() const {
 }
 
 __host__ void Matrix::Tensor3d::index(unsigned int depth, unsigned int row, unsigned int col, float *elements) {
-   this->rowcount = row;
-   this->colcount = col;
-   this->depthCount = depth;
-   this->elementCount = row*col*depth;
-   this->elements = elements;
+    this->rowcount = row;
+    this->colcount = col;
+    this->depthCount = depth;
+    this->elementCount = row * col * depth;
+    this->elements = elements;
 }
+
 __host__ void Matrix::Tensor3d::index(unsigned int depth, unsigned int row, unsigned int col) {
     this->rowcount = row;
     this->colcount = col;
     this->depthCount = depth;
-    this->elementCount = row*col*depth;
+    this->elementCount = row * col * depth;
 }
 
 
@@ -114,24 +119,24 @@ __device__ float Matrix::fasterSqrt(float in) {
     return in;
 }
 
-__global__ void tensorAdd(Matrix::Tensor* mat1, Matrix::Tensor* mat2){
+__global__ void tensorAdd(Matrix::Tensor *mat1, Matrix::Tensor *mat2) {
     unsigned int index = threadIdx.x + blockIdx.x * blockDim.x;
-    mat1->elements[index] = mat1->elements[index]+mat2->elements[index];
+    mat1->elements[index] = mat1->elements[index] + mat2->elements[index];
 }
 
-__global__ void tensorMinus(Matrix::Tensor* mat1, Matrix::Tensor* mat2){
+__global__ void tensorMinus(Matrix::Tensor *mat1, Matrix::Tensor *mat2) {
     unsigned int index = threadIdx.x + blockIdx.x * blockDim.x;
-    mat1->elements[index] = mat1->elements[index]-mat2->elements[index];
+    mat1->elements[index] = mat1->elements[index] - mat2->elements[index];
 }
 
-__global__ void tensorHadamard(Matrix::Tensor* mat1, Matrix::Tensor* mat2){
+__global__ void tensorHadamard(Matrix::Tensor *mat1, Matrix::Tensor *mat2) {
     unsigned int index = threadIdx.x + blockIdx.x * blockDim.x;
-    mat1->elements[index] = mat1->elements[index]*mat2->elements[index];
+    mat1->elements[index] = mat1->elements[index] * mat2->elements[index];
 }
 
-__global__ void tensorMultiply(Matrix::Tensor* mat1, float val){
+__global__ void tensorMultiply(Matrix::Tensor *mat1, float val) {
     unsigned int index = threadIdx.x + blockIdx.x * blockDim.x;
-    mat1->elements[index] = mat1->elements[index]*val;
+    mat1->elements[index] = mat1->elements[index] * val;
 }
 
 
@@ -150,14 +155,14 @@ __global__ void allocConst(Matrix::Matrix2d *mat1, float in) {
     mat1->set(row, col, in);
 }
 
-__global__ void allocRandom(long seed, Matrix::Tensor *mat1){
+__global__ void allocRandom(long seed, Matrix::Tensor *mat1) {
     curandStateXORWOW_t state;
     unsigned int index = threadIdx.x + blockIdx.x * blockDim.x;
-    curand_init((index+1) * seed, 0, 0, &state);
-    mat1->elements[index] =  static_cast<float>((curand_uniform(&state)) - 0.5F);
+    curand_init((index + 1) * seed, 0, 0, &state);
+    mat1->elements[index] = static_cast<float>((curand_uniform(&state)) - 0.5F);
 }
 
-__global__ void allocConst(Matrix::Tensor* mat1, float in){
+__global__ void allocConst(Matrix::Tensor *mat1, float in) {
     unsigned int index = threadIdx.x + blockIdx.x * blockDim.x;
     mat1->elements[index] = in;
 }
@@ -187,12 +192,12 @@ __global__ void crossWMMA(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2, Matrix
             wmma::load_matrix_sync(A, mat1->elements + mat1Row * mat1->colcount + mat1Col, mat1->colcount);
             wmma::load_matrix_sync(B, mat2->elements + mat2Row * mat2->colcount + mat2Col, mat2->colcount);
 
-            #pragma unroll
+#pragma unroll
             for (float &t: A.x) {
                 t = wmma::__float_to_tf32(t);
             }
 
-            #pragma unroll
+#pragma unroll
             for (float &t: B.x) {
                 t = wmma::__float_to_tf32(t);
             }
@@ -207,10 +212,16 @@ __global__ void crossWMMA(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2, Matrix
                             wmma::mem_row_major);
 }
 
+#define SHARED_SIZE 2
+#define WARP_COUNT 4
+//For some unknown reasons, this method has the performance even worse than crossPrefetching
+//I will come back to reimplement the wmma share-mem optimization but I am fucked up for now
 __global__ void crossTilingWMMA(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2, Matrix::Matrix2d *result) {
-
-    __shared__ float tileMat1[M * K * 4];
-    __shared__ float tileMat2[K * N * 4];
+    //define warps and lanes
+    unsigned int warpM = (blockIdx.x * blockDim.x + threadIdx.x) / WARP_SIZE;
+    unsigned int warpPos = warpM % WARP_COUNT;
+    unsigned int laneID = (blockIdx.x * blockDim.x + threadIdx.x) % WARP_SIZE;
+    unsigned int warpN = (blockIdx.y * blockDim.y + threadIdx.y);
 
     wmma::fragment<wmma::matrix_a, M, N, K, wmma::precision::tf32, wmma::row_major> A;
     wmma::fragment<wmma::matrix_b, M, N, K, wmma::precision::tf32, wmma::row_major> B;
@@ -218,47 +229,54 @@ __global__ void crossTilingWMMA(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2, 
 
     wmma::fill_fragment(CAccu, 0.0f);
 
-    unsigned int warpM = (blockIdx.x * blockDim.x + threadIdx.x) / WARP_SIZE;
-    unsigned int warpN = (blockIdx.y * blockDim.y + threadIdx.y);
+    __shared__ float aSegment[M * K * SHARED_SIZE * WARP_COUNT];
+    __shared__ float bSegment[K * N * SHARED_SIZE * WARP_COUNT];
 
+    int stepSize = K * SHARED_SIZE;
     unsigned int mat1Row = warpM * M;
     unsigned int mat2Col = warpN * N;
-    //The block size is 128*4, while the tiles are 16*32,each thread extract an element
-    for (int KTileIndex = 0; KTileIndex < mat1->colcount; KTileIndex += (K * 4)) {
 
-        //copy into shapes : 16 * 32 : 32 * 16
-        unsigned int copyX1 = threadIdx.x % 32;
-        unsigned int copyY1 = threadIdx.y * (threadIdx.x / 32);
-        unsigned int copyX2 = threadIdx.x % 16;
-        unsigned int copyY2 = threadIdx.y * (threadIdx.x / 16);
+    for (int procIndex = 0; procIndex < mat1->colcount + stepSize - 1; procIndex += stepSize) {
+        //read matrix A
+#pragma unroll
+        for (int readIndex = 0; readIndex < stepSize; readIndex += WARP_SIZE / M) {
+            unsigned int readRow = mat1Row + laneID % M;
+            unsigned int readCol = procIndex + readIndex + laneID / M;
+            aSegment[warpPos * M * K * SHARED_SIZE + (laneID % M) * stepSize + readIndex + laneID / M] = mat1->get(
+                    readRow, readCol);
+        }
 
-        tileMat1[copyY1 * 32 + copyX1] = mat1->get(mat1Row + copyY1, KTileIndex + copyX1);
-        tileMat2[copyY2 * 16 + copyX2] = mat2->get(KTileIndex + copyY2, mat2Col + copyX2);
+        //read matrix B
+#pragma unroll
+        for (int readIndex = 0; readIndex < stepSize; readIndex += WARP_SIZE / N) {
+            unsigned int readRow = procIndex + readIndex + laneID / N;
+            unsigned int readCol = mat2Col + laneID % N;
+            bSegment[warpPos * K * N * SHARED_SIZE + (readIndex + laneID / N) * N + laneID % N] = mat2->get(readRow,
+                                                                                                            readCol);
+        }
 
         __syncthreads();
 
-        for (int kIndex = 0; kIndex < 4 * K; kIndex+=K){
-            if (mat1Row < mat1->rowcount &&  kIndex + KTileIndex < mat1->colcount && KTileIndex + kIndex < mat2->rowcount &&
-                mat2Col < mat2->colcount) {
-                wmma::load_matrix_sync(A, tileMat1 + kIndex, 32);
-                wmma::load_matrix_sync(B, tileMat2 + kIndex * 16, 16);
+        for (int kIndex = 0; kIndex < stepSize; kIndex += K) {
 
-                #pragma unroll
-                for (float &t: A.x) {
-                    t = wmma::__float_to_tf32(t);
-                }
+            wmma::load_matrix_sync(A, aSegment + warpPos * M * K * SHARED_SIZE + kIndex, stepSize);
+            wmma::load_matrix_sync(B, bSegment + warpPos * K * N * SHARED_SIZE + kIndex * N, N);
 
-                #pragma unroll
-                for (float &t: B.x) {
-                    t = wmma::__float_to_tf32(t);
-                }
-
-                wmma::mma_sync(CAccu, A, B, CAccu);
+#pragma unroll
+            for (float &t: A.x) {
+                t = wmma::__float_to_tf32(t);
             }
+
+#pragma unroll
+            for (float &t: B.x) {
+                t = wmma::__float_to_tf32(t);
+            }
+
+            wmma::mma_sync(CAccu, A, B, CAccu);
         }
     }
-    unsigned int resultRow = mat1Row;
-    unsigned int resultCol = mat2Col;
+    unsigned int resultRow = warpM * M;
+    unsigned int resultCol = warpN * N;
     wmma::store_matrix_sync(result->elements + resultRow * mat2->colcount + resultCol, CAccu, mat2->colcount,
                             wmma::mem_row_major);
 }
@@ -287,7 +305,7 @@ __global__ void crossTiling(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2, Matr
     unsigned int row = threadIdx.y + blockIdx.y * blockDim.y;
     unsigned int col = threadIdx.x + blockIdx.x * blockDim.x;
 
-    #pragma unroll
+#pragma unroll
     for (int tileId = 0; tileId < (mat1->colcount + TILE_SIZE - 1) / TILE_SIZE; tileId++) {
 
         //load shared memory
@@ -295,7 +313,7 @@ __global__ void crossTiling(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2, Matr
         mat2_tile[threadIdx.y][threadIdx.x] = mat2->get(threadIdx.y + tileId * TILE_SIZE, col);
         __syncthreads();
 
-        #pragma unroll
+#pragma unroll
         for (int mulIndex = 0; mulIndex < TILE_SIZE; mulIndex++) {
             resultOutput += mat1_tile[threadIdx.y][mulIndex] * mat2_tile[mulIndex][threadIdx.x];
         }
@@ -330,11 +348,11 @@ __global__ void crossCompOpt(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2, Mat
         }
         __syncthreads();
 
-         #pragma unroll
+#pragma unroll
         for (int row = 0; row < TILE_SIZE; row++) {
             //pick a value of mat2 and put it into the registers
             mat2Value = mat2->get(tileId * TILE_SIZE + row, resultCol);
-            #pragma unroll
+#pragma unroll
             for (int bufId = 0; bufId < TILE_SIZE; bufId++) {
                 resultBuffer[bufId] += mat1Tile[row][bufId] * mat2Value;
             }
@@ -359,7 +377,7 @@ __global__ void crossPrefetching(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2,
     float *next = mat1TileNext;
 
     unsigned int resultCol = VECTOR_SIZE * TILE_SIZE * blockIdx.x + threadIdx.y * TILE_SIZE + threadIdx.x;
-    #pragma unroll
+#pragma unroll
     for (int i = 0; i < TILE_SIZE / VECTOR_SIZE; i++) {
         //transposeOperation the matrix segment
         cur[threadIdx.x * TILE_SIZE + i * VECTOR_SIZE + threadIdx.y] = mat1->
@@ -369,19 +387,20 @@ __global__ void crossPrefetching(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2,
 
     for (int tileId = 0; tileId < (mat1->colcount + TILE_SIZE - 1) / TILE_SIZE; tileId++) {
         if ((tileId + 1) * TILE_SIZE < mat1->colcount + TILE_SIZE - 1) {
-            #pragma unroll
+#pragma unroll
             for (int i = 0; i < TILE_SIZE / VECTOR_SIZE; i++) {
                 //transposeOperation the matrix segment
                 next[threadIdx.x * TILE_SIZE + i * VECTOR_SIZE + threadIdx.y] = mat1->
-                        get(blockIdx.y * TILE_SIZE + i * VECTOR_SIZE + threadIdx.y, (tileId+1) * TILE_SIZE + threadIdx.x);
+                        get(blockIdx.y * TILE_SIZE + i * VECTOR_SIZE + threadIdx.y,
+                            (tileId + 1) * TILE_SIZE + threadIdx.x);
             }
         }
 
-        #pragma unroll
+#pragma unroll
         for (int row = 0; row < TILE_SIZE; row++) {
             //pick a value of mat2 and put it into the registers
             mat2Value = mat2->get(tileId * TILE_SIZE + row, resultCol);
-            #pragma unroll
+#pragma unroll
             for (int bufId = 0; bufId < TILE_SIZE; bufId++) {
                 resultBuffer[bufId] += cur[row * TILE_SIZE + bufId] * mat2Value;
             }
@@ -389,12 +408,12 @@ __global__ void crossPrefetching(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2,
         __syncthreads();
 
         //swap the pointers
-        auto* tmp = cur;
+        auto *tmp = cur;
         cur = next;
         next = tmp;
     }
     unsigned int resultRow0 = blockIdx.y * TILE_SIZE;
-    #pragma unroll
+#pragma unroll
     for (int bufId = 0; bufId < TILE_SIZE; bufId++) {
         result->set(resultRow0 + bufId, resultCol, resultBuffer[bufId]);
     }
@@ -409,7 +428,7 @@ __global__ void crossPrefetchingA(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2
     float resultBuffer[TILE_SIZE] = {0};
 
     unsigned int resultCol = VECTOR_SIZE * TILE_SIZE * blockIdx.x + threadIdx.y * TILE_SIZE + threadIdx.x;
-    #pragma unroll
+#pragma unroll
     for (int i = 0; i < TILE_SIZE / VECTOR_SIZE; i++) {
         //transposeOperation the matrix segment
         mat1Tile[threadIdx.x * TILE_SIZE + i * VECTOR_SIZE + threadIdx.y] = mat1->
@@ -422,15 +441,16 @@ __global__ void crossPrefetchingA(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2
 
     for (int tileId = 0; tileId < (mat1->colcount + TILE_SIZE - 1) / TILE_SIZE; tileId++) {
         if ((tileId + 1) * TILE_SIZE < mat1->colcount) {
-            #pragma unroll
+#pragma unroll
             for (int i = 0; i < TILE_SIZE / VECTOR_SIZE; i++) {
                 //transposeOperation the matrix segment
                 next[threadIdx.x * TILE_SIZE + i * VECTOR_SIZE + threadIdx.y] = mat1->
-                        get(blockIdx.y * TILE_SIZE + i * VECTOR_SIZE + threadIdx.y, (tileId+1) * TILE_SIZE + threadIdx.x);
+                        get(blockIdx.y * TILE_SIZE + i * VECTOR_SIZE + threadIdx.y,
+                            (tileId + 1) * TILE_SIZE + threadIdx.x);
             }
         }
 
-        #pragma unroll
+#pragma unroll
         for (int row = 0; row < TILE_SIZE; row++) {
             //pick a value of mat2 and put it into the registers
             mat2Value = mat2->get(tileId * TILE_SIZE + row, resultCol);
@@ -446,9 +466,60 @@ __global__ void crossPrefetchingA(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2
         next = tmp;
     }
     unsigned int resultRow0 = blockIdx.y * TILE_SIZE;
-    #pragma unroll
+#pragma unroll
     for (int bufId = 0; bufId < TILE_SIZE; bufId++) {
         result->add(resultRow0 + bufId, resultCol, resultBuffer[bufId]);
+    }
+}
+
+__global__ void crossTensorA(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2, Matrix::Matrix2d *result) {
+    //define warps and lanes
+    unsigned int warpM = (blockIdx.x * blockDim.x + threadIdx.x) / WARP_SIZE;
+    unsigned int warpN = (blockIdx.y * blockDim.y + threadIdx.y);
+
+    wmma::fragment<wmma::matrix_a, M, N, K, wmma::precision::tf32, wmma::row_major> A;
+    wmma::fragment<wmma::matrix_b, M, N, K, wmma::precision::tf32, wmma::row_major> B;
+    wmma::fragment<wmma::accumulator, M, N, K, float> acc_frag;
+    wmma::fragment<wmma::accumulator, M, N, K, float> CAccu;
+
+    wmma::fill_fragment(CAccu, 0.0f);
+
+    for (int kIndex = 0; kIndex < mat1->colcount; kIndex += K) {
+        unsigned int mat1Row = warpM * M;
+        unsigned int mat1Col = kIndex;
+        unsigned int mat2Row = kIndex;
+        unsigned int mat2Col = warpN * N;
+        if (mat1Row < mat1->rowcount && mat1Col < mat1->colcount && mat2Row < mat2->rowcount &&
+            mat2Col < mat2->colcount) {
+            wmma::load_matrix_sync(A, mat1->elements + mat1Row * mat1->colcount + mat1Col, mat1->colcount);
+            wmma::load_matrix_sync(B, mat2->elements + mat2Row * mat2->colcount + mat2Col, mat2->colcount);
+
+#pragma unroll
+            for (float &t: A.x) {
+                t = wmma::__float_to_tf32(t);
+            }
+
+#pragma unroll
+            for (float &t: B.x) {
+                t = wmma::__float_to_tf32(t);
+            }
+
+            wmma::mma_sync(CAccu, A, B, CAccu);
+        }
+    }
+
+    unsigned int resultRow = warpM * M;
+    unsigned int resultCol = warpN * N;
+
+    if (resultRow < result->colcount && resultCol < result->colcount) {
+        wmma::load_matrix_sync(acc_frag, result->elements + resultRow * result->colcount + resultCol, result->colcount,
+                               wmma::mem_row_major);
+#pragma unroll
+        for (int i = 0; i < CAccu.num_elements; i++) {
+            CAccu.x[i] += acc_frag.x[i];
+        }
+        wmma::store_matrix_sync(result->elements + resultRow * mat2->colcount + resultCol, CAccu, mat2->colcount,
+                                wmma::mem_row_major);
     }
 }
 
@@ -523,8 +594,8 @@ __global__ void insertColumn(Matrix::Matrix2d *mat1, Matrix::Matrix2d *column, u
 // ===============================================================
 
 
-Matrix::Matrix2d* Matrix::callAllocElementH(unsigned int row, unsigned int col) {
-    Matrix2d* mat1;
+Matrix::Matrix2d *Matrix::callAllocElementH(unsigned int row, unsigned int col) {
+    Matrix2d *mat1;
     cudaMallocHost(&mat1, sizeof(Matrix::Matrix2d));
     mat1->rowcount = row;
     mat1->colcount = col;
@@ -532,8 +603,8 @@ Matrix::Matrix2d* Matrix::callAllocElementH(unsigned int row, unsigned int col) 
     return mat1;
 }
 
-Matrix::Matrix2d* Matrix::callAllocElementD(unsigned int row, unsigned int col) {
-    Matrix2d* mat1;
+Matrix::Matrix2d *Matrix::callAllocElementD(unsigned int row, unsigned int col) {
+    Matrix2d *mat1;
     cudaMallocHost(&mat1, sizeof(Matrix::Matrix2d));
     mat1->rowcount = row;
     mat1->colcount = col;
@@ -541,7 +612,7 @@ Matrix::Matrix2d* Matrix::callAllocElementD(unsigned int row, unsigned int col) 
     return mat1;
 }
 
-Matrix::Tensor3d* Matrix::callAllocElementH(unsigned int depth, unsigned int row, unsigned int col) {
+Matrix::Tensor3d *Matrix::callAllocElementH(unsigned int depth, unsigned int row, unsigned int col) {
     Tensor3d *mat1;
     cudaMallocHost(&mat1, sizeof(Tensor3d));
     mat1->rowcount = row;
@@ -552,7 +623,7 @@ Matrix::Tensor3d* Matrix::callAllocElementH(unsigned int depth, unsigned int row
     return mat1;
 }
 
-Matrix::Tensor3d* Matrix::callAllocElementD(unsigned int depth, unsigned int row, unsigned int col) {
+Matrix::Tensor3d *Matrix::callAllocElementD(unsigned int depth, unsigned int row, unsigned int col) {
     Tensor3d *mat1;
     cudaMallocHost(&mat1, sizeof(Tensor3d));
     mat1->rowcount = row;
@@ -563,8 +634,8 @@ Matrix::Tensor3d* Matrix::callAllocElementD(unsigned int depth, unsigned int row
     return mat1;
 }
 
-Matrix::Tensor4d* Matrix::callAllocElementH(unsigned int w, unsigned int depth, unsigned int row,
-                               unsigned int col) {
+Matrix::Tensor4d *Matrix::callAllocElementH(unsigned int w, unsigned int depth, unsigned int row,
+                                            unsigned int col) {
     Tensor4d *mat1;
     cudaMallocHost(&mat1, sizeof(Tensor3d));
     mat1->rowcount = row;
@@ -576,8 +647,8 @@ Matrix::Tensor4d* Matrix::callAllocElementH(unsigned int w, unsigned int depth, 
     return mat1;
 }
 
-Matrix::Tensor4d* Matrix::callAllocElementD(unsigned int w, unsigned int depth, unsigned int row,
-                               unsigned int col) {
+Matrix::Tensor4d *Matrix::callAllocElementD(unsigned int w, unsigned int depth, unsigned int row,
+                                            unsigned int col) {
     Tensor4d *mat1;
     cudaMallocHost(&mat1, sizeof(Tensor3d));
     mat1->rowcount = row;
@@ -599,10 +670,11 @@ void Matrix::callAllocRandom(Matrix::Matrix2d *mat1) {
                          (mat1->rowcount + CUDA_BLOCK_SIZE.y - 1) / CUDA_BLOCK_SIZE.y);
     allocRandom<<<gridSize, CUDA_BLOCK_SIZE>>>((long) (&begin.QuadPart), mat1);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError() == 0);
 }
 
 void Matrix::callAllocZero(Matrix::Matrix2d *mat1) {
-    cudaMemset(mat1->elements, 0.0f, sizeof(float)*mat1->colcount * mat1->rowcount);
+    cudaMemset(mat1->elements, 0.0f, sizeof(float) * mat1->colcount * mat1->rowcount);
 }
 
 void Matrix::callAllocConst(Matrix::Matrix2d *mat1, float in) {
@@ -610,6 +682,7 @@ void Matrix::callAllocConst(Matrix::Matrix2d *mat1, float in) {
                          (mat1->rowcount + CUDA_BLOCK_SIZE.y - 1) / CUDA_BLOCK_SIZE.y);
     allocConst<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1, in);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError() == 0);
 }
 
 void Matrix::callAllocRandom(Matrix::Tensor *mat1) {
@@ -619,19 +692,21 @@ void Matrix::callAllocRandom(Matrix::Tensor *mat1) {
     QueryPerformanceFrequency(&cpuFre);
     QueryPerformanceCounter(&begin);
     unsigned int block = CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y;
-    unsigned int grid = (mat1->elementCount + block - 1)/block;
+    unsigned int grid = (mat1->elementCount + block - 1) / block;
     allocRandom<<<grid, block>>>((long) (&begin.QuadPart), mat1);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError() == 0);
 }
 
 void Matrix::callAllocZero(Matrix::Tensor *mat1) {
-    cudaMemset(mat1->elements, 0.0f, sizeof(float)*mat1->elementCount);
+    cudaMemset(mat1->elements, 0.0f, sizeof(float) * mat1->elementCount);
 }
 
 void Matrix::callAllocConst(Matrix::Tensor *mat1, float in) {
     dim3 gridSize = dim3((mat1->elementCount + CUDA_BLOCK_SIZE_3D.x - 1) / CUDA_BLOCK_SIZE_3D.x);
-    allocConst<<<gridSize, CUDA_BLOCK_SIZE.x*CUDA_BLOCK_SIZE.y>>>(mat1, in);
+    allocConst<<<gridSize, CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y>>>(mat1, in);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError() == 0);
 }
 
 Matrix::Matrix2d *Matrix::callCopyD2D(Matrix::Matrix2d *src, Matrix::Matrix2d *dist) {
@@ -652,19 +727,19 @@ Matrix::Matrix2d *Matrix::callCopyH2D(Matrix::Matrix2d *src, Matrix::Matrix2d *d
     return dist;
 }
 
-Matrix::Tensor *Matrix::callCopyD2D(Matrix::Tensor *src, Tensor* dist) {
+Matrix::Tensor *Matrix::callCopyD2D(Matrix::Tensor *src, Tensor *dist) {
     assert(src->elementCount == dist->elementCount);
     cudaMemcpy(dist->elements, src->elements, sizeof(float) * src->elementCount, cudaMemcpyDeviceToDevice);
     return dist;
 }
 
-Matrix::Tensor *Matrix::callCopyD2H(Matrix::Tensor *src, Tensor* dist) {
+Matrix::Tensor *Matrix::callCopyD2H(Matrix::Tensor *src, Tensor *dist) {
     assert(src->elementCount == dist->elementCount);
     cudaMemcpy(dist->elements, src->elements, sizeof(float) * src->elementCount, cudaMemcpyDeviceToHost);
     return dist;
 }
 
-Matrix::Tensor *Matrix::callCopyH2D(Matrix::Tensor *src, Tensor* dist) {
+Matrix::Tensor *Matrix::callCopyH2D(Matrix::Tensor *src, Tensor *dist) {
     assert(src->elementCount == dist->elementCount);
     cudaMemcpy(dist->elements, src->elements, sizeof(float) * src->elementCount, cudaMemcpyHostToDevice);
     return dist;
@@ -681,6 +756,7 @@ Matrix::Matrix2d *Matrix::callCrossPOLD(Matrix::Matrix2d *mat1, Matrix::Matrix2d
                          (mat1->rowcount + CUDA_BLOCK_SIZE.y - 1) / CUDA_BLOCK_SIZE.y);
     crossP<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1, mat2, result);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError() == 0);
     return result;
 }
 
@@ -692,6 +768,7 @@ Matrix::Matrix2d *Matrix::callCross(Matrix2d *mat1, Matrix2d *mat2, Matrix2d *re
                          (mat1->rowcount + CUDA_BLOCK_SIZE.y - 1) / CUDA_BLOCK_SIZE.y);
     crossTiling<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1, mat2, result);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError() == 0);
     return result;
 }
 
@@ -703,6 +780,7 @@ Matrix::Matrix2d *Matrix::callCrossCompOpt(Matrix::Matrix2d *mat1, Matrix::Matri
                      (TILE_SIZE * VECTOR_SIZE), (mat1->rowcount + TILE_SIZE - 1) / TILE_SIZE);
     crossCompOpt<<<grid, blockSize>>>(mat1, mat2, result);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError() == 0);
     return result;
 }
 
@@ -714,15 +792,15 @@ Matrix::Matrix2d *Matrix::callCrossWMMA(Matrix::Matrix2d *mat1, Matrix::Matrix2d
 
     dim3 blockSize = dim3(128, 4);
     dim3 gridSize = dim3(
-            (mat1->colcount + (M * blockSize.x / 32 - 1)) / (M * blockSize.x / 32),
-            (mat1->rowcount + N * blockSize.y - 1) / (N * blockSize.y));
+            (result->colcount + (M * blockSize.x / 32 - 1)) / (M * blockSize.x / 32),
+            (result->rowcount + N * blockSize.y - 1) / (N * blockSize.y));
     crossWMMA<<<gridSize, blockSize>>>(mat1, mat2, result);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError() == 0);
     return result;
 }
 
-Matrix::Matrix2d *
-Matrix::callCrossTilingWMMA(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2, Matrix::Matrix2d *result) {
+Matrix::Matrix2d *Matrix::callCrossTensorA(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2, Matrix::Matrix2d *result) {
     assert(mat1->rowcount % 16 == 0 && mat2->colcount % 16 == 0);
     assert(mat1->colcount % 8 == 0 && mat1->colcount == mat2->rowcount);
     assert(mat1->rowcount == result->rowcount);
@@ -730,10 +808,29 @@ Matrix::callCrossTilingWMMA(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2, Matr
 
     dim3 blockSize = dim3(128, 4);
     dim3 gridSize = dim3(
-            (mat1->colcount + (M * blockSize.x / 32 - 1)) / (M * blockSize.x / 32),
+            (result->colcount + (M * blockSize.x / 32 - 1)) / (M * blockSize.x / 32),
+            (result->rowcount + N * blockSize.y - 1) / (N * blockSize.y));
+    crossTensorA<<<gridSize, blockSize>>>(mat1, mat2, result);
+    cudaDeviceSynchronize();
+    assert(cudaGetLastError() == 0);
+    return result;
+}
+
+
+Matrix::Matrix2d *
+Matrix::callCrossTilingWMMA(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2, Matrix::Matrix2d *result) {
+    assert(mat1->colcount == mat2->rowcount);
+    assert(mat1->rowcount == result->rowcount);
+    assert(mat2->colcount == result->colcount);
+    assert(result->colcount % 16 == 0);
+
+    dim3 blockSize = dim3(128, 1);
+    dim3 gridSize = dim3(
+            (mat1->colcount + (M * blockSize.x / WARP_SIZE - 1)) / (M * blockSize.x / WARP_SIZE),
             (mat1->rowcount + N * blockSize.y - 1) / (N * blockSize.y));
     crossTilingWMMA<<<gridSize, blockSize>>>(mat1, mat2, result);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError() == 0);
     return result;
 }
 
@@ -747,6 +844,7 @@ Matrix::callCrossPrefetching(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2, Mat
                      (TILE_SIZE * VECTOR_SIZE), (mat1->rowcount + TILE_SIZE - 1) / TILE_SIZE);
     crossPrefetching<<<grid, blockSize>>>(mat1, mat2, result);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError() == 0);
     return result;
 }
 
@@ -759,6 +857,7 @@ Matrix::callCrossPrefetchingA(Matrix::Matrix2d *mat1, Matrix::Matrix2d *mat2, Ma
                      (TILE_SIZE * VECTOR_SIZE), (mat1->rowcount + TILE_SIZE - 1) / TILE_SIZE);
     crossPrefetchingA<<<grid, blockSize>>>(mat1, mat2, result);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError() == 0);
     return result;
 }
 
@@ -767,6 +866,7 @@ Matrix::Matrix2d *Matrix::callHadamardP(Matrix::Matrix2d *mat1, Matrix::Matrix2d
                          (mat1->rowcount + CUDA_BLOCK_SIZE.y - 1) / CUDA_BLOCK_SIZE.y);
     hadmardProduct<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1, mat2);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError() == 0);
     return mat1;
 }
 
@@ -775,6 +875,7 @@ Matrix::Matrix2d *Matrix::callConstantP(Matrix::Matrix2d *mat1, float con) {
                          (mat1->rowcount + CUDA_BLOCK_SIZE.y - 1) / CUDA_BLOCK_SIZE.y);
     constantProduct<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1, con);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError() == 0);
     return mat1;
 }
 
@@ -784,6 +885,7 @@ Matrix::Matrix2d *Matrix::callAddition(Matrix::Matrix2d *mat1, Matrix::Matrix2d 
                          (mat1->rowcount + CUDA_BLOCK_SIZE.y - 1) / CUDA_BLOCK_SIZE.y);
     addition<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1, mat2);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError() == 0);
     return mat1;
 }
 
@@ -792,6 +894,7 @@ Matrix::Matrix2d *Matrix::callAddition(Matrix::Matrix2d *mat1, float con) {
                          (mat1->rowcount + CUDA_BLOCK_SIZE.y - 1) / CUDA_BLOCK_SIZE.y);
     addition<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1, con);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError() == 0);
     return mat1;
 }
 
@@ -801,6 +904,7 @@ Matrix::Matrix2d *Matrix::callSubtraction(Matrix::Matrix2d *mat1, Matrix::Matrix
                          (mat1->rowcount + CUDA_BLOCK_SIZE.y - 1) / CUDA_BLOCK_SIZE.y);
     subtraction<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1, mat2);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError() == 0);
     return mat1;
 }
 
@@ -810,6 +914,7 @@ Matrix::Matrix2d *Matrix::callSubtraction(Matrix::Matrix2d *mat1, float con) {
                          (mat1->rowcount + CUDA_BLOCK_SIZE.y - 1) / CUDA_BLOCK_SIZE.y);
     subtraction<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1, con);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError() == 0);
     return mat1;
 }
 
@@ -819,6 +924,7 @@ Matrix::Matrix2d *Matrix::callPower(Matrix::Matrix2d *mat1, float con) {
                          (mat1->rowcount + CUDA_BLOCK_SIZE.y - 1) / CUDA_BLOCK_SIZE.y);
     power<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1, con);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError() == 0);
     return mat1;
 }
 
@@ -828,6 +934,7 @@ Matrix::Matrix2d *Matrix::callTranspose(Matrix::Matrix2d *mat1, Matrix::Matrix2d
                          (mat1->rowcount + CUDA_BLOCK_SIZE.y - 1) / CUDA_BLOCK_SIZE.y);
     transposeOperation<<<gridSize, CUDA_BLOCK_SIZE>>>(mat1, result);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError() == 0);
     return result;
 }
 
@@ -851,14 +958,15 @@ void Matrix::inspect(Tensor3d *mat1) {
     debug = callAllocElementH(mat1->depthCount, mat1->rowcount, mat1->colcount);
     cudaMemcpy(debug->elements, mat1->elements, sizeof(float) * debug->depthCount * debug->colcount * debug->rowcount,
                cudaMemcpyDeviceToHost);
-    for(int d = 0; d < debug->depthCount; d++) {
+    for (int d = 0; d < debug->depthCount; d++) {
         for (int i = 0; i < debug->rowcount; i++) {
             for (int j = 0; j < debug->colcount; j++) {
-                std::cout << (*(debug->elements + d*debug->rowcount*debug->colcount + i * debug->colcount + j)) << " ";
+                std::cout << (*(debug->elements + d * debug->rowcount * debug->colcount + i * debug->colcount + j))
+                          << " ";
             }
             std::cout << std::endl;
         }
-        std::cout <<"\n"<< std::endl;
+        std::cout << "\n" << std::endl;
     }
     cudaFree(debug->elements);
     cudaFree(debug);
@@ -875,9 +983,11 @@ void reduce(float *input, float *output, unsigned int size) {
         reduction<<<procSize / bSize + 1, bSize>>>(procSize, proc, proc);
         procSize = procSize % WARP_SIZE ? procSize / WARP_SIZE + 1 : procSize / WARP_SIZE;
         cudaDeviceSynchronize();
+        assert(cudaGetLastError() == 0);
     }
     reduction<<<1, bSize>>>(procSize, proc, proc);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError() == 0);
     cudaMemcpy(output, proc, sizeof(float), cudaMemcpyDeviceToHost);
 }
 
@@ -891,6 +1001,7 @@ Matrix::Matrix2d *Matrix::callInsertCol(Matrix::Matrix2d *mat1, Matrix::Matrix2d
     dim3 grid = dim3((column->rowcount + (CUDA_BLOCK_SIZE.x - 1)) / CUDA_BLOCK_SIZE.x, 1);
     insertColumn<<<grid, CUDA_BLOCK_SIZE>>>(mat1, column, colIndex);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError() == 0);
     return mat1;
 }
 
@@ -935,42 +1046,46 @@ Matrix::Matrix2d *Matrix::Matrix2d::operator+=(float con) {
 Matrix::Tensor *Matrix::Tensor::operator+(Matrix::Tensor *mat2) {
     assert(this->elementCount == mat2->elementCount);
     unsigned int block = CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y;
-    unsigned int grid = (this->elementCount + block - 1)/block;
-    tensorAdd<<<grid,block>>>(this,mat2);
+    unsigned int grid = (this->elementCount + block - 1) / block;
+    tensorAdd<<<grid, block>>>(this, mat2);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError() == 0);
     return this;
 }
 
 Matrix::Tensor *Matrix::Tensor::operator-(Matrix::Tensor *mat2) {
     assert(this->elementCount == mat2->elementCount);
     unsigned int block = CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y;
-    unsigned int grid = (this->elementCount + block - 1)/block;
-    tensorMinus<<<grid,block>>>(this,mat2);
+    unsigned int grid = (this->elementCount + block - 1) / block;
+    tensorMinus<<<grid, block>>>(this, mat2);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError() == 0);
     return this;
 }
 
 Matrix::Tensor *Matrix::Tensor::operator*(Matrix::Tensor *mat2) {
     assert(this->elementCount == mat2->elementCount);
     unsigned int block = CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y;
-    unsigned int grid = (this->elementCount + block - 1)/block;
-    tensorHadamard<<<grid,block>>>(this,mat2);
+    unsigned int grid = (this->elementCount + block - 1) / block;
+    tensorHadamard<<<grid, block>>>(this, mat2);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError() == 0);
     return this;
 }
 
 Matrix::Tensor *Matrix::Tensor::operator*(float val) {
     unsigned int block = CUDA_BLOCK_SIZE.x * CUDA_BLOCK_SIZE.y;
-    unsigned int grid = (this->elementCount + block - 1)/block;
-    tensorMultiply<<<grid,block>>>(this,val);
+    unsigned int grid = (this->elementCount + block - 1) / block;
+    tensorMultiply<<<grid, block>>>(this, val);
     cudaDeviceSynchronize();
+    assert(cudaGetLastError() == 0);
     return this;
 }
 
 
 void Matrix::Matrix2d::setH2D(unsigned int row, unsigned int col, float value) {
     assert(row < this->rowcount && col < this->colcount);
-    cudaMemcpy(this->elements + row*colcount + col, &value, sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(this->elements + row * colcount + col, &value, sizeof(float), cudaMemcpyHostToDevice);
 }
 
 __host__ void Matrix::Matrix2d::setH2D(unsigned int offset, float value) {
@@ -979,7 +1094,7 @@ __host__ void Matrix::Matrix2d::setH2D(unsigned int offset, float value) {
 }
 
 __host__ float Matrix::Matrix2d::getH2D(unsigned int row, unsigned int col) const {
-    float output=0;
+    float output = 0;
     cudaMemcpy(&output, this->elements + row * this->colcount + col, sizeof(float), cudaMemcpyDeviceToHost);
     return output;
 }
@@ -988,7 +1103,7 @@ __host__ string Matrix::Matrix2d::toString() const {
     return "(" + to_string(rowcount) + "," + to_string(colcount) + ")";
 }
 
-__host__ void Matrix::Matrix2d::index(unsigned int row, unsigned int col, float* element) {
+__host__ void Matrix::Matrix2d::index(unsigned int row, unsigned int col, float *element) {
     this->rowcount = row;
     this->colcount = col;
     this->elements = element;
@@ -1000,7 +1115,8 @@ __host__ void Matrix::Matrix2d::index(unsigned int row, unsigned int col) {
 }
 
 __host__ string Matrix::Tensor4d::toString() const {
-    return "(" + to_string(wCount) + "," + to_string(depthCount) + "," + to_string(rowcount) + "," + to_string(colcount) + ")";
+    return "(" + to_string(wCount) + "," + to_string(depthCount) + "," + to_string(rowcount) + "," +
+           to_string(colcount) + ")";
 }
 
 dim4::dim4(unsigned int x, unsigned int y, unsigned int z, unsigned int w) : x(x), y(y), z(z), w(w) {}
